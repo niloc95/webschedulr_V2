@@ -1,33 +1,23 @@
-/*.zip
-/.idea/
-/.tmp-package/
-/build/
-/docs/apigen/html
-/docs/jsdoc/html
-/docs/plato/html
-/docker/mysql/
-/docker/baikal/
-/docker/openldap/
-/node_modules/
-/npm-debug.log
-/assets/js/**/*.min.js
-/assets/css/**/*.css
-/assets/vendor
-/config.php
-/storage/backups/*
-!/storage/backups/.htaccess
-!/storage/backups/index.html
-/storage/cache/*
-!/storage/cache/.htaccess
-!/storage/cache/index.html
-/storage/logs/*
-!/storage/logs/.htaccess
-!/storage/logs/index.html
-/storage/sessions/*
-!/storage/sessions/.htaccess
-!/storage/sessions/index.html
-/storage/uploads/*
-!/storage/uploads/index.html
+# Environment variables
+.env
+
+# Composer packages
 /vendor/
-/metafile
+
+# Node modules
+/node_modules/
+
+# Built assets
+/assets/
+
+# Logs
+/logs/
+
+# IDE specific files
+.idea/
+.vscode/
+*.sublime-*
+
+# OS specific files
 .DS_Store
+Thumbs.db
