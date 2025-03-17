@@ -8,6 +8,9 @@ ini_set('display_errors', 1);
 ini_set('display_startup_errors', 1);
 error_reporting(E_ALL);
 
+// Add routing debug
+$debugRouting = isset($_GET['debug_router']) && $_GET['debug_router'] == 1;
+
 // Load bootstrap file
 require_once __DIR__ . '/../bootstrap.php';
 
@@ -17,17 +20,167 @@ require_once __DIR__ . '/../application/router.php';
 // Create router instance
 $router = new Router();
 
-// Define routes
-$router->get('/', function() {
-    // Check if user is logged in
-    session_start();
-    if (!isset($_SESSION['user'])) {
-        header('Location: /login');
-        exit;
-    }
-    include __DIR__ . '/../application/views/dashboard/index.php';
+// =============================================================================
+// CALENDAR ROUTES - Define these FIRST to ensure proper priority
+// =============================================================================
+$router->get('/calendar', function() {
+    require_once __DIR__ . '/../application/controllers/CalendarController.php';
+    $controller = new CalendarController();
+    $controller->index();
 });
 
+$router->get('/calendar/day', function() {
+    require_once __DIR__ . '/../application/controllers/CalendarController.php';
+    $controller = new CalendarController();
+    $controller->day();
+});
+
+$router->get('/calendar/create', function() {
+    require_once __DIR__ . '/../application/controllers/CalendarController.php';
+    $controller = new CalendarController();
+    $controller->create();
+});
+
+$router->post('/calendar/create', function() {
+    require_once __DIR__ . '/../application/controllers/CalendarController.php';
+    $controller = new CalendarController();
+    $controller->store();
+});
+
+// IMPORTANT - This is the key route that's being overridden
+$router->get('/calendar/edit/:id', function($id) use ($debugRouting) {  // Add "use ($debugRouting)" here
+    if ($debugRouting) {
+        echo "DEBUG: Calendar edit route matched with ID: $id<br>";
+    }
+    require_once __DIR__ . '/../application/controllers/CalendarController.php';
+    $controller = new CalendarController();
+    $controller->edit($id);
+});
+
+$router->post('/calendar/update/:id', function($id) {
+    require_once __DIR__ . '/../application/controllers/CalendarController.php';
+    $controller = new CalendarController();
+    $controller->update($id);
+});
+
+$router->post('/calendar/delete/:id', function($id) {
+    require_once __DIR__ . '/../application/controllers/CalendarController.php';
+    $controller = new CalendarController();
+    $controller->delete($id);
+});
+
+// =============================================================================
+// SERVICE ROUTES - Define these AFTER calendar routes
+// =============================================================================
+$router->get('/services', function() {
+    require_once __DIR__ . '/../application/controllers/ServiceController.php';
+    $controller = new ServiceController();
+    $controller->index();
+});
+
+$router->get('/services/create', function() {
+    require_once __DIR__ . '/../application/controllers/ServiceController.php';
+    $controller = new ServiceController();
+    $controller->create();
+});
+
+$router->post('/services/store', function() {
+    require_once __DIR__ . '/../application/controllers/ServiceController.php';
+    $controller = new ServiceController();
+    $controller->store();
+});
+
+// IMPORTANT - Use a consistent format for route parameters
+$router->get('/services/edit/:id', function($id) use ($debugRouting) {  // Add "use ($debugRouting)" here
+    if ($debugRouting) {
+        echo "DEBUG: Service edit route matched with ID: $id<br>";
+    }
+    require_once __DIR__ . '/../application/controllers/ServiceController.php';
+    $controller = new ServiceController();
+    $controller->edit($id);
+});
+
+$router->post('/services/update/:id', function($id) {
+    require_once __DIR__ . '/../application/controllers/ServiceController.php';
+    $controller = new ServiceController();
+    $controller->update($id);
+});
+
+$router->post('/services/delete/:id', function($id) {
+    require_once __DIR__ . '/../application/controllers/ServiceController.php';
+    $controller = new ServiceController();
+    $controller->delete($id);
+});
+
+// =============================================================================
+// CLIENT ROUTES
+// =============================================================================
+$router->get('/clients', function() {
+    require_once __DIR__ . '/../application/controllers/ClientController.php';
+    $controller = new ClientController();
+    $controller->index();
+});
+
+$router->get('/clients/create', function() {
+    require_once __DIR__ . '/../application/controllers/ClientController.php';
+    $controller = new ClientController();
+    $controller->create();
+});
+
+$router->post('/clients/store', function() {
+    require_once __DIR__ . '/../application/controllers/ClientController.php';
+    $controller = new ClientController();
+    $controller->store();
+});
+
+$router->get('/clients/show/:id', function($id) {
+    require_once __DIR__ . '/../application/controllers/ClientController.php';
+    $controller = new ClientController();
+    $controller->show($id);
+});
+
+$router->get('/clients/edit/:id', function($id) {
+    require_once __DIR__ . '/../application/controllers/ClientController.php';
+    $controller = new ClientController();
+    $controller->edit($id);
+});
+
+$router->post('/clients/update/:id', function($id) {
+    require_once __DIR__ . '/../application/controllers/ClientController.php';
+    $controller = new ClientController();
+    $controller->update($id);
+});
+
+$router->post('/clients/delete/:id', function($id) {
+    require_once __DIR__ . '/../application/controllers/ClientController.php';
+    $controller = new ClientController();
+    $controller->delete($id);
+});
+
+// Add this route for AJAX client creation
+$router->post('/clients/ajax-create', function() {
+    require_once __DIR__ . '/../application/controllers/ClientController.php';
+    $controller = new ClientController();
+    $controller->ajaxCreate();
+});
+
+// Add this route for AJAX service creation
+$router->post('/services/ajax-create', function() {
+    require_once __DIR__ . '/../application/controllers/ServiceController.php';
+    $controller = new ServiceController();
+    $controller->ajaxCreate();
+});
+
+// Add this route for updating appointment status
+$router->post('/calendar/update-status', function() {
+    require_once __DIR__ . '/../application/controllers/CalendarController.php';
+    $controller = new CalendarController();
+    $controller->updateStatus();
+});
+
+// =============================================================================
+// DASHBOARD ROUTES
+// =============================================================================
 $router->get('/dashboard', function() {
     // Check if user is logged in
     session_start();
@@ -35,42 +188,15 @@ $router->get('/dashboard', function() {
         header('Location: /login');
         exit;
     }
-    include __DIR__ . '/../application/views/dashboard/index.php';
+    
+    require_once __DIR__ . '/../application/controllers/DashboardController.php';
+    $controller = new DashboardController();
+    $controller->index();
 });
 
-// Debug route
-// Dashboard route with better error handling
-$router->get('/dashboard', function() {
-    if (session_status() === PHP_SESSION_NONE) {
-        session_start();
-    }
-    
-    // Check if user is logged in
-    if (!isset($_SESSION['user'])) {
-        header('Location: /login');
-        exit;
-    }
-    
-    try {
-        // Include the dashboard controller
-        require_once __DIR__ . '/../application/controllers/DashboardController.php';
-        
-        // Instantiate and call the controller
-        $controller = new DashboardController();
-        $controller->index();
-    } catch (Exception $e) {
-        // Output user-friendly error and debug info if needed
-        echo "<h3>Dashboard Error</h3>";
-        echo "<p>Sorry, we couldn't load the dashboard. Please try again later.</p>";
-        
-        if (Config::DEBUG_MODE) {
-            echo "<pre>Error: " . htmlspecialchars($e->getMessage()) . "</pre>";
-            echo "<p>Check the <a href='/debug/dashboard'>dashboard debug page</a> for more information.</p>";
-        }
-    }
-});
-
-// Auth routes
+// =============================================================================
+// AUTH ROUTES
+// =============================================================================
 $router->get('/login', function() {
     // Start session to check for success message
     session_start();
@@ -157,87 +283,8 @@ $router->get('/register', function() {
 });
 
 $router->post('/register', function() {
-    // Form data
-    $name = $_POST['name'] ?? '';
-    $email = $_POST['email'] ?? '';
-    $password = $_POST['password'] ?? '';
-    $confirmPassword = $_POST['confirm_password'] ?? '';
-    
-    // Basic validation
-    if (empty($name) || empty($email) || empty($password)) {
-        $error = "All fields are required";
-        include __DIR__ . '/../application/views/auth/register.php';
-        return;
-    }
-    
-    if ($password !== $confirmPassword) {
-        $error = "Passwords do not match";
-        include __DIR__ . '/../application/views/auth/register.php';
-        return;
-    }
-    
-    if (strlen($password) < 6) {
-        $error = "Password must be at least 6 characters";
-        include __DIR__ . '/../application/views/auth/register.php';
-        return;
-    }
-    
-    // Connect to database
-    try {
-        $db = new PDO(
-            "mysql:host=" . Config::DB_HOST . ";dbname=" . Config::DB_NAME . ";charset=utf8mb4",
-            Config::DB_USERNAME,
-            Config::DB_PASSWORD,
-            [
-                PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
-                PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
-                PDO::ATTR_EMULATE_PREPARES => false
-            ]
-        );
-        
-        // Check if email already exists
-        $stmt = $db->prepare("SELECT id FROM users WHERE email = :email");
-        $stmt->bindValue(':email', $email);
-        $stmt->execute();
-        
-        if ($stmt->fetch()) {
-            $error = "Email already exists";
-            include __DIR__ . '/../application/views/auth/register.php';
-            return;
-        }
-        
-        // Hash password
-        $hashedPassword = password_hash($password, PASSWORD_DEFAULT);
-        
-        // Insert user
-        $stmt = $db->prepare("
-            INSERT INTO users (name, email, password, role, created_at) 
-            VALUES (:name, :email, :password, 'user', NOW())
-        ");
-        
-        $stmt->bindValue(':name', $name);
-        $stmt->bindValue(':email', $email);
-        $stmt->bindValue(':password', $hashedPassword);
-        $stmt->execute();
-        
-        // Success! Redirect to login
-        session_start();
-        $_SESSION['success'] = "Registration successful. Please login.";
-        header('Location: /login');
-        exit;
-        
-    } catch (PDOException $e) {
-        // Log the error (in a production app)
-        $error = "An error occurred while registering. Please try again.";
-        
-        // For debugging:
-        if (Config::DEBUG_MODE) {
-            $error = "Database error: " . $e->getMessage();
-        }
-        
-        include __DIR__ . '/../application/views/auth/register.php';
-        return;
-    }
+    // Form data processing...
+    // [Keep your existing code here]
 });
 
 $router->get('/logout', function() {
@@ -245,26 +292,6 @@ $router->get('/logout', function() {
     session_destroy();
     header('Location: /login');
     exit;
-});
-
-// Dashboard route - make sure this config path is correct
-$router->get('/dashboard', function() {
-    if (session_status() === PHP_SESSION_NONE) {
-        session_start();
-    }
-    
-    // Check if user is logged in
-    if (!isset($_SESSION['user'])) {
-        header('Location: /login');
-        exit;
-    }
-    
-    // Include the dashboard controller
-    require_once __DIR__ . '/../application/controllers/DashboardController.php';
-    
-    // Instantiate and call the controller
-    $controller = new DashboardController();
-    $controller->index();
 });
 
 // Redirect root URL to dashboard for logged in users or login page otherwise
@@ -281,111 +308,31 @@ $router->get('/', function() {
     exit;
 });
 
-
-// Calendar routes
-$router->get('/calendar', function() {
-    session_start();
-    
-    // Check if user is logged in
-    if (!isset($_SESSION['user'])) {
-        header('Location: /login');
-        exit;
-    }
-    
-    // Include and instantiate the calendar controller
-    require_once __DIR__ . '/../application/controllers/CalendarController.php';
-    $controller = new CalendarController();
-    $controller->index();
+// =============================================================================
+// DIAGNOSTIC ROUTES
+// =============================================================================
+$router->get('/diagnostic/db', function() {
+    require_once __DIR__ . '/../application/controllers/DiagnosticController.php';
+    $controller = new DiagnosticController();
+    $controller->testDatabaseConnection();
 });
 
-$router->get('/calendar/day', function() {
-    session_start();
-    
-    // Check if user is logged in
-    if (!isset($_SESSION['user'])) {
-        header('Location: /login');
-        exit;
-    }
-    
-    // Include and instantiate the calendar controller
-    require_once __DIR__ . '/../application/controllers/CalendarController.php';
-    $controller = new CalendarController();
-    $controller->day();
+$router->get('/diagnostic/appointments', function() {
+    require_once __DIR__ . '/../application/controllers/DiagnosticController.php';
+    $controller = new DiagnosticController();
+    $controller->checkAppointmentsTable();
 });
 
-$router->get('/calendar/create', function() {
-    session_start();
-    
-    // Check if user is logged in
-    if (!isset($_SESSION['user'])) {
-        header('Location: /login');
-        exit;
-    }
-    
-    // Include and instantiate the calendar controller
-    require_once __DIR__ . '/../application/controllers/CalendarController.php';
-    $controller = new CalendarController();
-    $controller->createAppointment();
+$router->get('/diagnostic/check-services', function() {
+    require_once __DIR__ . '/../application/controllers/DiagnosticController.php';
+    $controller = new DiagnosticController();
+    $controller->checkServiceColumns();
 });
 
-$router->post('/calendar/create', function() {
-    session_start();
-    
-    // Check if user is logged in
-    if (!isset($_SESSION['user'])) {
-        header('Location: /login');
-        exit;
-    }
-    
-    // Include and instantiate the calendar controller
-    require_once __DIR__ . '/../application/controllers/CalendarController.php';
-    $controller = new CalendarController();
-    $controller->createAppointment();
-});
-
-$router->get('/calendar/edit/:id', function($id) {
-    session_start();
-    
-    // Check if user is logged in
-    if (!isset($_SESSION['user'])) {
-        header('Location: /login');
-        exit;
-    }
-    
-    // Include and instantiate the calendar controller
-    require_once __DIR__ . '/../application/controllers/CalendarController.php';
-    $controller = new CalendarController();
-    $controller->editAppointment($id);
-});
-
-$router->post('/calendar/edit/:id', function($id) {
-    session_start();
-    
-    // Check if user is logged in
-    if (!isset($_SESSION['user'])) {
-        header('Location: /login');
-        exit;
-    }
-    
-    // Include and instantiate the calendar controller
-    require_once __DIR__ . '/../application/controllers/CalendarController.php';
-    $controller = new CalendarController();
-    $controller->editAppointment($id);
-});
-
-$router->get('/calendar/delete/:id', function($id) {
-    session_start();
-    
-    // Check if user is logged in
-    if (!isset($_SESSION['user'])) {
-        header('Location: /login');
-        exit;
-    }
-    
-    // Include and instantiate the calendar controller
-    require_once __DIR__ . '/../application/controllers/CalendarController.php';
-    $controller = new CalendarController();
-    $controller->deleteAppointment($id);
+$router->get('/diagnostic/services', function() {
+    require_once __DIR__ . '/../application/controllers/DiagnosticController.php';
+    $controller = new DiagnosticController();
+    $controller->testServicesTable();
 });
 
 // 404 handler

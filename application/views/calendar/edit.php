@@ -1,15 +1,10 @@
 <?php
 // Set active menu and page title
 $active = 'calendar';
-$title = 'New Appointment';
+$title = 'Edit Appointment';
 include __DIR__ . '/../layouts/header.php';
 
-// Safe htmlspecialchars function
-function safeHtmlSpecialChars($str) {
-    return htmlspecialchars($str ?? '');
-}
-
-// Helper function for form errors
+// Helper functions for form errors
 function hasError($field) {
     if (isset($_SESSION['errors']) && isset($_SESSION['errors'][$field])) {
         return 'is-invalid';
@@ -24,26 +19,28 @@ function getError($field) {
     return '';
 }
 
+// Helper function to get old form values - ensuring null safety
 function getOldValue($field) {
     if (isset($_SESSION['old'][$field])) {
-        return safeHtmlSpecialChars($_SESSION['old'][$field]);
+        return htmlspecialchars($_SESSION['old'][$field]);
     }
     return '';
 }
 
-// Get selected date/time from query string or old input
-$date = isset($_GET['date']) ? $_GET['date'] : (getOldValue('date') ?: date('Y-m-d'));
-$time = isset($_GET['time']) ? $_GET['time'] : (getOldValue('time') ?: '09:00');
+// Make sure we're handling null values safely
+function safeHtmlSpecialChars($str) {
+    return htmlspecialchars($str ?? '');
+}
 ?>
 
 <div class="container-fluid">
     <div class="d-sm-flex align-items-center justify-content-between mb-4">
-        <h1 class="h3 mb-0 text-gray-800">New Appointment</h1>
-        <a href="/calendar" class="btn btn-sm btn-secondary shadow-sm">
-            <i class="bi bi-arrow-left"></i> Back to Calendar
+        <h1 class="h3 mb-0 text-gray-800">Edit Appointment</h1>
+        <a href="/calendar/day?day=<?= date('j', strtotime($appointment['start_time'])) ?>&month=<?= date('n', strtotime($appointment['start_time'])) ?>&year=<?= date('Y', strtotime($appointment['start_time'])) ?>" class="btn btn-sm btn-secondary shadow-sm">
+            <i class="bi bi-arrow-left"></i> Back to Day View
         </a>
     </div>
-
+    
     <?php if (isset($_SESSION['error'])): ?>
     <div class="alert alert-danger">
         <?= $_SESSION['error'] ?>
@@ -55,7 +52,7 @@ $time = isset($_GET['time']) ? $_GET['time'] : (getOldValue('time') ?: '09:00');
             <h6 class="m-0 font-weight-bold text-primary">Appointment Details</h6>
         </div>
         <div class="card-body">
-            <form action="/calendar/create" method="post">
+            <form action="/calendar/update/<?= $appointment['id'] ?>" method="post">
                 <div class="row mb-3">
                     <div class="col-md-6">
                         <label for="client_id" class="form-label">Client *</label>
@@ -63,13 +60,13 @@ $time = isset($_GET['time']) ? $_GET['time'] : (getOldValue('time') ?: '09:00');
                             <select class="form-control <?= hasError('client_id') ?>" id="client_id" name="client_id" required>
                                 <option value="">Select Client</option>
                                 <?php foreach($clients as $client): ?>
-                                    <option value="<?= $client['id'] ?>" <?= (getOldValue('client_id') == $client['id']) ? 'selected' : '' ?>>
+                                    <option value="<?= $client['id'] ?>" <?= ($client['id'] == $appointment['client_id']) ? 'selected' : '' ?>>
                                         <?= safeHtmlSpecialChars($client['name']) ?>
                                     </option>
                                 <?php endforeach; ?>
                             </select>
                             <button type="button" class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#newClientModal">
-                                <i class="bi bi-plus"></i> New Client
+                                <i class="bi bi-plus"></i> New
                             </button>
                         </div>
                         <?= getError('client_id') ?>
@@ -81,9 +78,7 @@ $time = isset($_GET['time']) ? $_GET['time'] : (getOldValue('time') ?: '09:00');
                             <select class="form-control <?= hasError('service_id') ?>" id="service_id" name="service_id" required>
                                 <option value="">Select Service</option>
                                 <?php foreach($services as $service): ?>
-                                    <option value="<?= $service['id'] ?>" 
-                                            data-duration="<?= $service['duration'] ?>"
-                                            <?= (getOldValue('service_id') == $service['id']) ? 'selected' : '' ?>>
+                                    <option value="<?= $service['id'] ?>" data-duration="<?= $service['duration'] ?>" <?= ($service['id'] == $appointment['service_id']) ? 'selected' : '' ?>>
                                         <?= safeHtmlSpecialChars($service['name']) ?> (<?= $service['duration'] ?> min)
                                     </option>
                                 <?php endforeach; ?>
@@ -100,33 +95,49 @@ $time = isset($_GET['time']) ? $_GET['time'] : (getOldValue('time') ?: '09:00');
                     <div class="col-md-4">
                         <label for="date" class="form-label">Date *</label>
                         <input type="date" class="form-control <?= hasError('date') ?>" id="date" name="date" 
-                               value="<?= $date ?>" required>
+                               value="<?= date('Y-m-d', strtotime($appointment['start_time'])) ?>" required>
                         <?= getError('date') ?>
                     </div>
                     
                     <div class="col-md-4">
                         <label for="time" class="form-label">Time *</label>
                         <input type="time" class="form-control <?= hasError('time') ?>" id="time" name="time" 
-                               value="<?= $time ?>" required>
+                               value="<?= date('H:i', strtotime($appointment['start_time'])) ?>" required>
                         <?= getError('time') ?>
                     </div>
                     
                     <div class="col-md-4">
                         <label for="duration" class="form-label">Duration (minutes) *</label>
                         <input type="number" class="form-control <?= hasError('duration') ?>" id="duration" name="duration" 
-                               value="<?= getOldValue('duration') ?: '60' ?>" 
+                               value="<?= round((strtotime($appointment['end_time']) - strtotime($appointment['start_time'])) / 60) ?>" 
                                min="5" step="5" required>
                         <?= getError('duration') ?>
                     </div>
                 </div>
                 
-                <div class="mb-3">
-                    <label for="notes" class="form-label">Notes</label>
-                    <textarea class="form-control" id="notes" name="notes" rows="3"><?= getOldValue('notes') ?></textarea>
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <label for="status" class="form-label">Status</label>
+                        <select class="form-control <?= hasError('status') ?>" id="status" name="status">
+                            <option value="pending" <?= ($appointment['status'] == 'pending') ? 'selected' : '' ?>>Pending</option>
+                            <option value="confirmed" <?= ($appointment['status'] == 'confirmed') ? 'selected' : '' ?>>Confirmed</option>
+                            <option value="completed" <?= ($appointment['status'] == 'completed') ? 'selected' : '' ?>>Completed</option>
+                            <option value="cancelled" <?= ($appointment['status'] == 'cancelled') ? 'selected' : '' ?>>Cancelled</option>
+                        </select>
+                        <?= getError('status') ?>
+                    </div>
                 </div>
                 
-                <div class="d-grid">
-                    <button type="submit" class="btn btn-primary">Create Appointment</button>
+                <div class="mb-3">
+                    <label for="notes" class="form-label">Notes</label>
+                    <textarea class="form-control" id="notes" name="notes" rows="3"><?= safeHtmlSpecialChars($appointment['notes']) ?></textarea>
+                </div>
+                
+                <div class="d-flex justify-content-between">
+                    <button type="submit" class="btn btn-primary">Update Appointment</button>
+                    <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#deleteModal">
+                        Delete Appointment
+                    </button>
                 </div>
             </form>
         </div>
@@ -208,6 +219,28 @@ $time = isset($_GET['time']) ? $_GET['time'] : (getOldValue('time') ?: '09:00');
     </div>
 </div>
 
+<!-- Delete Modal -->
+<div class="modal fade" id="deleteModal" tabindex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="deleteModalLabel">Confirm Delete</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                Are you sure you want to delete this appointment?
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <form action="/calendar/delete/<?= $appointment['id'] ?>" method="post">
+                    <input type="hidden" name="referrer" value="/calendar/day?day=<?= date('j', strtotime($appointment['start_time'])) ?>&month=<?= date('n', strtotime($appointment['start_time'])) ?>&year=<?= date('Y', strtotime($appointment['start_time'])) ?>">
+                    <button type="submit" class="btn btn-danger">Delete Appointment</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     // Update duration when service is selected
@@ -282,5 +315,6 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 });
 </script>
+<script src="/js/appointment-form.js"></script>
 
 <?php include __DIR__ . '/../layouts/footer.php'; ?>

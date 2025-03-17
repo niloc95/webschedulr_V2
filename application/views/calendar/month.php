@@ -85,7 +85,7 @@ include __DIR__ . '/../layouts/header.php';
                         $isToday = ($currentDate == $today);
                         
                         echo '<div class="calendar-day' . ($isToday ? ' today' : '') . '">';
-                        echo '<div class="date">' . $day . '</div>';
+                        echo '<a href="/calendar/day?date=' . $currentDate . '" class="date-link">' . $day . '</a>';
                         
                         // Show appointments for this day
                         if (isset($appointmentsByDate[$currentDate])) {
@@ -109,15 +109,17 @@ include __DIR__ . '/../layouts/header.php';
                                         $statusClass = 'secondary';
                                 }
                                 
+                                // Add a link to each appointment
+                                echo '<a href="/calendar/edit/' . $appointment['id'] . '?src=calendar_view">';
                                 echo '<div class="appointment bg-' . $statusClass . '-soft">';
                                 echo '<div class="time">' . $time . '</div>';
                                 echo '<div class="client">' . htmlspecialchars($appointment['client_name']) . '</div>';
                                 echo '</div>';
+                                echo '</a>';
                             }
                             echo '</div>';
                         }
                         
-                        echo '<a href="/calendar/day?date=' . $currentDate . '" class="day-link"></a>';
                         echo '</div>';
                     }
                     
@@ -182,6 +184,15 @@ include __DIR__ . '/../layouts/header.php';
     margin-bottom: 8px;
 }
 
+.date-link {
+    font-weight: 600;
+    font-size: 14px;
+    margin-bottom: 8px;
+    display: inline-block;
+    text-decoration: none;
+    color: inherit;
+}
+
 .other-month {
     background-color: #f8f9fc;
     color: #b7b9cc;
@@ -191,7 +202,7 @@ include __DIR__ . '/../layouts/header.php';
     background-color: #eef;
 }
 
-.today .date {
+.today .date-link {
     color: #4e73df;
 }
 
@@ -203,6 +214,14 @@ include __DIR__ . '/../layouts/header.php';
     overflow-y: auto;
 }
 
+.appointment-link {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+    z-index: 15;
+    position: relative;
+}
+
 .appointment {
     padding: 4px 6px;
     border-radius: 4px;
@@ -210,6 +229,12 @@ include __DIR__ . '/../layouts/header.php';
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+}
+
+.appointment:hover {
+    opacity: 0.8;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
 
 .time {
@@ -220,16 +245,6 @@ include __DIR__ . '/../layouts/header.php';
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-}
-
-.day-link {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    z-index: 10;
-    opacity: 0;
 }
 
 /* Status colors */

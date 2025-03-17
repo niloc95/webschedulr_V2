@@ -1,37 +1,19 @@
 <?php
 
-class CalendarController {
-    private $db;
+require_once __DIR__ . '/BaseController.php';
+
+class CalendarController extends BaseController {
     
     public function __construct() {
-        try {
-            $this->db = new PDO(
-                "mysql:host=" . Config::DB_HOST . ";dbname=" . Config::DB_NAME . ";charset=utf8mb4",
-                Config::DB_USERNAME,
-                Config::DB_PASSWORD,
-                [
-                    PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
-                    PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
-                    PDO::ATTR_EMULATE_PREPARES => false
-                ]
-            );
-        } catch (PDOException $e) {
-            die("Database connection failed: " . $e->getMessage());
-        }
+        parent::__construct();
+        // Add debugging to track controller instantiation
+        error_log("CalendarController initialized");
     }
     
-    // Helper method to safely start a session
-    private function startSession() {
-        if (session_status() === PHP_SESSION_NONE) {
-            session_start();
-        }
-    }
-    
-    // Calendar monthly view
+    // Calendar Month View
     public function index() {
         $this->startSession();
         
-        // Check if user is logged in
         if (!isset($_SESSION['user'])) {
             header('Location: /login');
             exit;
@@ -39,47 +21,92 @@ class CalendarController {
         
         $userId = $_SESSION['user']['id'];
         
-        // Get month and year from query params or use current month/year
-        $month = isset($_GET['month']) ? intval($_GET['month']) : intval(date('n'));
-        $year = isset($_GET['year']) ? intval($_GET['year']) : intval(date('Y'));
+        // Get current month/year or use query parameters
+        $month = isset($_GET['month']) ? (int) $_GET['month'] : (int) date('n');
+        $year = isset($_GET['year']) ? (int) $_GET['year'] : (int) date('Y');
         
-        // Make sure month is valid
-        if ($month < 1 || $month > 12) {
-            $month = date('n');
+        // Validate month/year
+        if ($month < 1 || $month > 12) $month = date('n');
+        if ($year < 2020 || $year > 2050) $year = date('Y');
+        
+        // Calculate previous and next month
+        $prevMonth = $month - 1;
+        $prevYear = $year;
+        if ($prevMonth < 1) {
+            $prevMonth = 12;
+            $prevYear--;
+        }
+        
+        $nextMonth = $month + 1;
+        $nextYear = $year;
+        if ($nextMonth > 12) {
+            $nextMonth = 1;
+            $nextYear++;
         }
         
         // Calculate first and last day of month
         $firstDayOfMonth = mktime(0, 0, 0, $month, 1, $year);
-        $numDays = date('t', $firstDayOfMonth);
-        $lastDayOfMonth = mktime(0, 0, 0, $month, $numDays, $year);
+        $numDaysInMonth = date('t', $firstDayOfMonth);
+        $dateString = date('F Y', $firstDayOfMonth);
         
-        // Get first day of the month (0 = Sunday, 1 = Monday, etc)
-        $firstDayOfWeek = date('w', $firstDayOfMonth);
+        // Calculate starting day of week (0 = Sunday, 6 = Saturday)
+        $startingDayOfWeek = date('w', $firstDayOfMonth);
         
-        // Get appointments for this month
-        $startDate = date('Y-m-d', $firstDayOfMonth);
-        $endDate = date('Y-m-d', $lastDayOfMonth);
-        $appointments = $this->getAppointmentsByDateRange($userId, $startDate, $endDate);
-        
-        // Group appointments by date
-        $appointmentsByDate = [];
-        foreach ($appointments as $appointment) {
-            $date = date('Y-m-d', strtotime($appointment['start_time']));
-            if (!isset($appointmentsByDate[$date])) {
-                $appointmentsByDate[$date] = [];
+        // Get appointments for the month
+        try {
+            $startDate = date('Y-m-d 00:00:00', $firstDayOfMonth);
+            $endDate = date('Y-m-d 23:59:59', mktime(0, 0, 0, $month, $numDaysInMonth, $year));
+            
+            $query = "
+                SELECT a.*, c.name AS client_name, s.name AS service_name, s.color 
+                FROM appointments a 
+                JOIN clients c ON a.client_id = c.id 
+                JOIN services s ON a.service_id = s.id 
+                WHERE a.user_id = ? 
+                  AND a.start_time BETWEEN ? AND ? 
+                ORDER BY a.start_time
+            ";
+            
+            $stmt = $this->db->prepare($query);
+            $stmt->execute([$userId, $startDate, $endDate]);
+            $appointments = $stmt->fetchAll();
+            
+            // Organize appointments by day number (not full date)
+            $appointmentsByDay = [];
+            foreach ($appointments as $appointment) {
+                $day = date('j', strtotime($appointment['start_time'])); // Just the day number
+                if (!isset($appointmentsByDay[$day])) {
+                    $appointmentsByDay[$day] = [];
+                }
+                $appointmentsByDay[$day][] = $appointment;
             }
-            $appointmentsByDate[$date][] = $appointment;
+            
+        } catch (PDOException $e) {
+            error_log("Error fetching appointments: " . $e->getMessage());
+            $appointmentsByDay = [];
         }
         
-        // Include the view
-        include __DIR__ . '/../views/calendar/month.php';
+        // Structure data exactly as the template expects it
+        $calendarData = [
+            'currentMonth' => $month,
+            'currentYear' => $year,
+            'prevMonth' => $prevMonth,
+            'prevYear' => $prevYear,
+            'nextMonth' => $nextMonth,
+            'nextYear' => $nextYear,
+            'dateString' => $dateString,
+            'startingDayOfWeek' => $startingDayOfWeek,
+            'numDaysInMonth' => $numDaysInMonth,
+            'appointmentsByDay' => $appointmentsByDay
+        ];
+        
+        include __DIR__ . '/../views/calendar/index.php';
     }
     
-    // Calendar day view
+    // Calendar Day View
     public function day() {
         $this->startSession();
         
-        // Check if user is logged in
         if (!isset($_SESSION['user'])) {
             header('Location: /login');
             exit;
@@ -87,198 +114,389 @@ class CalendarController {
         
         $userId = $_SESSION['user']['id'];
         
-        // Get date from query params or use current date
-        $date = isset($_GET['date']) ? $_GET['date'] : date('Y-m-d');
+        // Get date or use today
+        $day = isset($_GET['day']) ? (int) $_GET['day'] : (int) date('j');
+        $month = isset($_GET['month']) ? (int) $_GET['month'] : (int) date('n');
+        $year = isset($_GET['year']) ? (int) $_GET['year'] : (int) date('Y');
         
-        // Validate date format
-        if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) {
-            $date = date('Y-m-d');
+        // Validate date
+        if (!checkdate($month, $day, $year)) {
+            $day = (int) date('j');
+            $month = (int) date('n');
+            $year = (int) date('Y');
         }
         
-        // Get appointments for this day
-        $appointments = $this->getAppointmentsByDate($userId, $date);
+        // Format date for display
+        $date = mktime(0, 0, 0, $month, $day, $year);
+        $dateString = date('l, F j, Y', $date);
+        $dateFormatted = date('Y-m-d', $date);
         
-        // Get services for dropdown in appointment form
-        $services = $this->getServices($userId);
+        // Get previous and next day
+        $prevDate = strtotime('-1 day', $date);
+        $nextDate = strtotime('+1 day', $date);
         
-        // Get clients for dropdown in appointment form
-        $clients = $this->getClients($userId);
+        try {
+            // Get day's appointments
+            $startDateTime = date('Y-m-d 00:00:00', $date);
+            $endDateTime = date('Y-m-d 23:59:59', $date);
+            
+            $query = "
+                SELECT a.*, c.name AS client_name, c.email AS client_email, c.phone AS client_phone,
+                       s.name AS service_name, s.duration, s.color
+                FROM appointments a 
+                JOIN clients c ON a.client_id = c.id 
+                JOIN services s ON a.service_id = s.id 
+                WHERE a.user_id = ? 
+                  AND a.start_time BETWEEN ? AND ? 
+                ORDER BY a.start_time
+            ";
+            
+            $stmt = $this->db->prepare($query);
+            $stmt->execute([$userId, $startDateTime, $endDateTime]);
+            $appointments = $stmt->fetchAll();
+            
+            // Get start/end times for display
+            $businessStart = 8; // 8 AM
+            $businessEnd = 18; // 6 PM
+            $timeSlots = [];
+            
+            for ($hour = $businessStart; $hour <= $businessEnd; $hour++) {
+                $formattedHour = date('g:i A', mktime($hour, 0, 0));
+                $timeSlots[] = $formattedHour;
+            }
+            
+        } catch (PDOException $e) {
+            error_log("Error fetching daily appointments: " . $e->getMessage());
+            $appointments = [];
+            $timeSlots = [];
+        }
         
-        // Include the view
+        // Get clients and services for appointment creation
+        try {
+            $clientsQuery = "SELECT id, name FROM clients WHERE user_id = ? ORDER BY name";
+            $clientsStmt = $this->db->prepare($clientsQuery);
+            $clientsStmt->execute([$userId]);
+            $clients = $clientsStmt->fetchAll();
+            
+            $servicesQuery = "SELECT id, name, duration FROM services WHERE user_id = ? ORDER BY name";
+            $servicesStmt = $this->db->prepare($servicesQuery);
+            $servicesStmt->execute([$userId]);
+            $services = $servicesStmt->fetchAll();
+            
+        } catch (PDOException $e) {
+            error_log("Error fetching clients/services: " . $e->getMessage());
+            $clients = [];
+            $services = [];
+        }
+        
+        // Pass data to view
+        $dayData = [
+            'day' => $day,
+            'month' => $month,
+            'year' => $year,
+            'dateString' => $dateString,
+            'dateFormatted' => $dateFormatted,
+            'prevDay' => date('j', $prevDate),
+            'prevMonth' => date('n', $prevDate),
+            'prevYear' => date('Y', $prevDate),
+            'nextDay' => date('j', $nextDate),
+            'nextMonth' => date('n', $nextDate),
+            'nextYear' => date('Y', $nextDate),
+            'appointments' => $appointments,
+            'timeSlots' => $timeSlots,
+            'clients' => $clients,
+            'services' => $services
+        ];
+        
         include __DIR__ . '/../views/calendar/day.php';
     }
     
-    // Create appointment form/handler
-    public function createAppointment() {
+    // Create new appointment
+    public function create() {
         $this->startSession();
         
-        // Check if user is logged in
         if (!isset($_SESSION['user'])) {
             header('Location: /login');
             exit;
         }
         
         $userId = $_SESSION['user']['id'];
-        $errors = [];
         
-        // Get services and clients for form
-        $services = $this->getServices($userId);
-        $clients = $this->getClients($userId);
-        
-        // Handle form submission
-        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            $clientId = isset($_POST['client_id']) ? intval($_POST['client_id']) : 0;
-            $serviceId = isset($_POST['service_id']) ? intval($_POST['service_id']) : 0;
-            $date = isset($_POST['date']) ? $_POST['date'] : '';
-            $time = isset($_POST['time']) ? $_POST['time'] : '';
-            $notes = isset($_POST['notes']) ? $_POST['notes'] : '';
+        try {
+            // Get clients for dropdown
+            $clientsQuery = "SELECT id, name FROM clients WHERE user_id = ? ORDER BY name";
+            $clientsStmt = $this->db->prepare($clientsQuery);
+            $clientsStmt->execute([$userId]);
+            $clients = $clientsStmt->fetchAll();
             
-            // Validate form data
-            if ($clientId <= 0) {
-                $errors[] = "Please select a client";
-            }
+            // Get services for dropdown
+            $servicesQuery = "SELECT id, name, duration FROM services WHERE user_id = ? ORDER BY name";
+            $servicesStmt = $this->db->prepare($servicesQuery);
+            $servicesStmt->execute([$userId]);
+            $services = $servicesStmt->fetchAll();
             
-            if ($serviceId <= 0) {
-                $errors[] = "Please select a service";
-            }
-            
-            if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) {
-                $errors[] = "Invalid date format";
-            }
-            
-            if (!preg_match('/^\d{2}:\d{2}$/', $time)) {
-                $errors[] = "Invalid time format";
-            }
-            
-            if (empty($errors)) {
-                // Get service duration to calculate end time
-                $service = $this->getService($serviceId);
-                $duration = $service ? intval($service['duration']) : 60; // Default to 60 min
-                
-                $startDateTime = $date . ' ' . $time . ':00';
-                $endDateTime = date('Y-m-d H:i:s', strtotime($startDateTime . ' +' . $duration . ' minutes'));
-                
-                // Check if time slot is available
-                if ($this->isTimeSlotAvailable($userId, $startDateTime, $endDateTime)) {
-                    // Create appointment
-                    $result = $this->createAppointmentInDb(
-                        $userId, 
-                        $clientId, 
-                        $serviceId, 
-                        $startDateTime, 
-                        $endDateTime, 
-                        $notes
-                    );
-                    
-                    if ($result) {
-                        // Redirect to day view
-                        header('Location: /calendar/day?date=' . $date . '&success=1');
-                        exit;
-                    } else {
-                        $errors[] = "Failed to create appointment. Please try again.";
-                    }
-                } else {
-                    $errors[] = "This time slot is not available. Please select another time.";
-                }
-            }
+        } catch (PDOException $e) {
+            error_log("Error fetching clients/services: " . $e->getMessage());
+            $clients = [];
+            $services = [];
         }
         
-        // If we get here, either the form hasn't been submitted or there were errors
+        // Get selected date if available
+        $selectedDate = isset($_GET['date']) ? $_GET['date'] : date('Y-m-d');
+        $selectedTime = isset($_GET['time']) ? $_GET['time'] : '09:00';
+        
         include __DIR__ . '/../views/calendar/create.php';
     }
+
+ /**
+ * Update appointment status via AJAX
+ */
+public function updateStatus() {
+    $this->startSession();
     
-    // Edit appointment
-    public function editAppointment($id) {
+    if (!isset($_SESSION['user'])) {
+        echo json_encode(['success' => false, 'message' => 'Unauthorized']);
+        return;
+    }
+    
+    header('Content-Type: application/json');
+    
+    $userId = $_SESSION['user']['id'];
+    
+    // Get input data
+    $input = json_decode(file_get_contents('php://input'), true);
+    error_log("Status update input: " . print_r($input, true));
+    
+    $id = $input['id'] ?? null;
+    $status = $input['status'] ?? null;
+    
+    if (!$id || !$status) {
+        echo json_encode(['success' => false, 'message' => 'Missing appointment ID or status']);
+        return;
+    }
+    
+    // Validate status
+    $validStatuses = ['pending', 'confirmed', 'completed', 'cancelled'];
+    if (!in_array($status, $validStatuses)) {
+        echo json_encode(['success' => false, 'message' => 'Invalid status']);
+        return;
+    }
+    
+    try {
+        // Update appointment status
+        $query = "UPDATE appointments SET status = ? WHERE id = ? AND user_id = ?";
+        $stmt = $this->db->prepare($query);
+        $result = $stmt->execute([$status, $id, $userId]);
+        
+        if ($result && $stmt->rowCount() > 0) {
+            echo json_encode([
+                'success' => true, 
+                'message' => 'Appointment status updated to ' . $status
+            ]);
+            error_log("Appointment $id status updated to $status");
+        } else {
+            echo json_encode([
+                'success' => false, 
+                'message' => 'Appointment not found or no changes made'
+            ]);
+            error_log("Failed to update appointment $id status - not found or no changes");
+        }
+        
+    } catch (PDOException $e) {
+        error_log("Error updating appointment status: " . $e->getMessage());
+        echo json_encode(['success' => false, 'message' => 'Database error occurred']);
+    }
+}
+    
+    // Store new appointment
+    public function store() {
         $this->startSession();
         
-        // Check if user is logged in
         if (!isset($_SESSION['user'])) {
             header('Location: /login');
             exit;
         }
         
         $userId = $_SESSION['user']['id'];
+        
+        // Validate inputs
+        $clientId = filter_input(INPUT_POST, 'client_id', FILTER_VALIDATE_INT);
+        $serviceId = filter_input(INPUT_POST, 'service_id', FILTER_VALIDATE_INT);
+        // Removed title validation
+        $date = trim($_POST['date'] ?? '');
+        $time = trim($_POST['time'] ?? '');
+        $notes = trim($_POST['notes'] ?? '');
+        $duration = filter_input(INPUT_POST, 'duration', FILTER_VALIDATE_INT);
+        // Status defaults to 'pending' as per your schema
+        $status = 'pending';
+        
         $errors = [];
         
-        // Get appointment details
-        $appointment = $this->getAppointmentById($id, $userId);
-        if (!$appointment) {
+        if (!$clientId) $errors['client_id'] = 'Please select a client';
+        if (!$serviceId) $errors['service_id'] = 'Please select a service';
+        // Removed title validation
+        if (empty($date)) $errors['date'] = 'Date is required';
+        if (empty($time)) $errors['time'] = 'Time is required';
+        if (!$duration || $duration <= 0) $errors['duration'] = 'Duration must be greater than 0';
+        
+        // If errors, redirect back with error messages
+        if (!empty($errors)) {
+            $_SESSION['errors'] = $errors;
+            $_SESSION['old'] = $_POST;
+            
+            // Redirect back to form
+            header('Location: /calendar/create');
+            exit;
+        }
+        
+        // Calculate start and end times
+        $startTime = date('Y-m-d H:i:s', strtotime("$date $time"));
+        $endTime = date('Y-m-d H:i:s', strtotime("$date $time + $duration minutes"));
+        
+        try {
+            // Check for overlapping appointments
+            $overlapCheck = $this->db->prepare("
+                SELECT COUNT(*) FROM appointments 
+                WHERE user_id = ? 
+                  AND status != 'cancelled'
+                  AND (
+                      (start_time <= ? AND end_time > ?) OR
+                      (start_time < ? AND end_time >= ?) OR
+                      (start_time >= ? AND end_time <= ?)
+                  )
+            ");
+            
+            $overlapCheck->execute([
+                $userId,
+                $endTime, $startTime,
+                $endTime, $endTime,
+                $startTime, $endTime
+            ]);
+            
+            if ($overlapCheck->fetchColumn() > 0) {
+                $_SESSION['error'] = 'This time slot overlaps with an existing appointment';
+                $_SESSION['old'] = $_POST;
+                header('Location: /calendar/create');
+                exit;
+            }
+            
+            // Current time for created_at
+            $currentTime = date('Y-m-d H:i:s');
+            
+            // Insert appointment - removed title field
+            $query = "
+                INSERT INTO appointments 
+                (user_id, client_id, service_id, start_time, end_time, status, notes, created_at) 
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            ";
+            
+            $stmt = $this->db->prepare($query);
+            $stmt->execute([
+                $userId,
+                $clientId,
+                $serviceId,
+                $startTime,
+                $endTime,
+                $status,
+                $notes,
+                $currentTime
+            ]);
+            
+            $_SESSION['success'] = 'Appointment created successfully';
+            
+            // Extract day, month, year from the appointment date for redirect
+            $day = date('j', strtotime($date));
+            $month = date('n', strtotime($date));
+            $year = date('Y', strtotime($date));
+            
+            header("Location: /calendar/day?day=$day&month=$month&year=$year");
+            exit;
+            
+        } catch (PDOException $e) {
+            error_log("Error creating appointment: " . $e->getMessage());
+            $_SESSION['error'] = 'Failed to create appointment: ' . $e->getMessage();
+            $_SESSION['old'] = $_POST;
+            header('Location: /calendar/create');
+            exit;
+        }
+    }
+    
+    // Edit appointment form
+    public function edit($id) {
+        $this->startSession();
+        
+        if (!isset($_SESSION['user'])) {
+            header('Location: /login');
+            exit;
+        }
+        
+        $userId = $_SESSION['user']['id'];
+        
+        // Add critical debugging
+        error_log("CalendarController::edit called with ID: $id");
+        
+        try {
+            // Get appointment data
+            $query = "
+                SELECT a.*, c.name AS client_name, c.phone AS client_phone, s.name AS service_name, s.duration, s.color
+                FROM appointments a
+                JOIN clients c ON a.client_id = c.id
+                JOIN services s ON a.service_id = s.id
+                WHERE a.id = ? AND a.user_id = ?
+            ";
+            $stmt = $this->db->prepare($query);
+            $stmt->execute([$id, $userId]);
+            $appointment = $stmt->fetch(PDO::FETCH_ASSOC);
+            
+            if (!$appointment) {
+                error_log("Appointment not found: ID $id for user $userId");
+                $_SESSION['error'] = 'Appointment not found';
+                header('Location: /calendar');
+                exit;
+            }
+            
+            // Log that we found the appointment
+            error_log("Found appointment: " . json_encode($appointment));
+            
+            // Get clients for dropdown
+            $clientsQuery = "SELECT * FROM clients WHERE user_id = ? ORDER BY name";
+            $clientsStmt = $this->db->prepare($clientsQuery);
+            $clientsStmt->execute([$userId]);
+            $clients = $clientsStmt->fetchAll(PDO::FETCH_ASSOC);
+            
+            // Get services for dropdown
+            $servicesQuery = "SELECT * FROM services WHERE user_id = ? ORDER BY name";
+            $servicesStmt = $this->db->prepare($servicesQuery);
+            $servicesStmt->execute([$userId]);
+            $services = $servicesStmt->fetchAll(PDO::FETCH_ASSOC);
+            
+            // CRITICAL: Check if the calendar edit view exists before including it
+            $viewPath = __DIR__ . '/../views/calendar/edit.php';
+            if (!file_exists($viewPath)) {
+                error_log("ERROR: Calendar edit view not found at: $viewPath");
+                $_SESSION['error'] = "System error: View file not found";
+                header('Location: /calendar');
+                exit;
+            }
+            
+            // Log before including the view
+            error_log("Including calendar edit view from: $viewPath");
+            
+            // Display edit form
+            include $viewPath;
+            
+        } catch (PDOException $e) {
+            error_log("Database error in calendar edit: " . $e->getMessage());
+            $_SESSION['error'] = 'Database error occurred';
             header('Location: /calendar');
             exit;
         }
-        
-        // Get services and clients for form
-        $services = $this->getServices($userId);
-        $clients = $this->getClients($userId);
-        
-        // Handle form submission
-        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            $clientId = isset($_POST['client_id']) ? intval($_POST['client_id']) : 0;
-            $serviceId = isset($_POST['service_id']) ? intval($_POST['service_id']) : 0;
-            $date = isset($_POST['date']) ? $_POST['date'] : '';
-            $time = isset($_POST['time']) ? $_POST['time'] : '';
-            $notes = isset($_POST['notes']) ? $_POST['notes'] : '';
-            
-            // Validate form data
-            if ($clientId <= 0) {
-                $errors[] = "Please select a client";
-            }
-            
-            if ($serviceId <= 0) {
-                $errors[] = "Please select a service";
-            }
-            
-            if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) {
-                $errors[] = "Invalid date format";
-            }
-            
-            if (!preg_match('/^\d{2}:\d{2}$/', $time)) {
-                $errors[] = "Invalid time format";
-            }
-            
-            if (empty($errors)) {
-                // Get service duration to calculate end time
-                $service = $this->getService($serviceId);
-                $duration = $service ? intval($service['duration']) : 60; // Default to 60 min
-                
-                $startDateTime = $date . ' ' . $time . ':00';
-                $endDateTime = date('Y-m-d H:i:s', strtotime($startDateTime . ' +' . $duration . ' minutes'));
-                
-                // Check if time slot is available (excluding current appointment)
-                if ($this->isTimeSlotAvailable($userId, $startDateTime, $endDateTime, $id)) {
-                    // Update appointment
-                    $result = $this->updateAppointmentInDb(
-                        $id,
-                        $userId, 
-                        $clientId, 
-                        $serviceId, 
-                        $startDateTime, 
-                        $endDateTime, 
-                        $notes
-                    );
-                    
-                    if ($result) {
-                        // Redirect to day view
-                        header('Location: /calendar/day?date=' . $date . '&success=1');
-                        exit;
-                    } else {
-                        $errors[] = "Failed to update appointment. Please try again.";
-                    }
-                } else {
-                    $errors[] = "This time slot is not available. Please select another time.";
-                }
-            }
-        }
-        
-        // If we get here, either the form hasn't been submitted or there were errors
-        include __DIR__ . '/../views/calendar/edit.php';
     }
     
-    // Delete appointment
-    public function deleteAppointment($id) {
+    // Update appointment
+    public function update($id) {
         $this->startSession();
         
-        // Check if user is logged in
         if (!isset($_SESSION['user'])) {
             header('Location: /login');
             exit;
@@ -286,161 +504,168 @@ class CalendarController {
         
         $userId = $_SESSION['user']['id'];
         
-        // Delete appointment from database
-        $result = $this->deleteAppointmentInDb($id, $userId);
+        // Validate inputs
+        $clientId = filter_input(INPUT_POST, 'client_id', FILTER_VALIDATE_INT);
+        $serviceId = filter_input(INPUT_POST, 'service_id', FILTER_VALIDATE_INT);
+        // Remove the title field
+        // $title = trim($_POST['title'] ?? '');
+        $date = trim($_POST['date'] ?? '');
+        $time = trim($_POST['time'] ?? '');
+        $notes = trim($_POST['notes'] ?? '');
+        $duration = filter_input(INPUT_POST, 'duration', FILTER_VALIDATE_INT);
+        $status = trim($_POST['status'] ?? 'pending');
         
-        if ($result) {
-            header('Location: /calendar?success=1');
+        $errors = [];
+        
+        if (!$clientId) $errors['client_id'] = 'Please select a client';
+        if (!$serviceId) $errors['service_id'] = 'Please select a service';
+        // Remove title validation
+        // if (empty($title)) $errors['title'] = 'Title is required';
+        if (empty($date)) $errors['date'] = 'Date is required';
+        if (empty($time)) $errors['time'] = 'Time is required';
+        if (!$duration || $duration <= 0) $errors['duration'] = 'Duration must be greater than 0';
+        
+        // Validate status against your schema values
+        $validStatuses = ['pending', 'confirmed', 'cancelled', 'completed'];
+        if (!in_array($status, $validStatuses)) {
+            $errors['status'] = 'Invalid status selected';
+        }
+        
+        // If errors, redirect back with error messages
+        if (!empty($errors)) {
+            $_SESSION['errors'] = $errors;
+            $_SESSION['old'] = $_POST;
+            header("Location: /calendar/edit/{$id}");
             exit;
-        } else {
-            header('Location: /calendar?error=1');
+        }
+        
+        try {
+            // First check if appointment exists and belongs to user
+            $checkQuery = "SELECT id FROM appointments WHERE id = ? AND user_id = ?";
+            $checkStmt = $this->db->prepare($checkQuery);
+            $checkStmt->execute([$id, $userId]);
+            
+            if (!$checkStmt->fetch()) {
+                $_SESSION['error'] = 'Appointment not found';
+                header('Location: /calendar');
+                exit;
+            }
+            
+            // Calculate start and end times
+            $startTime = date('Y-m-d H:i:s', strtotime("$date $time"));
+            $endTime = date('Y-m-d H:i:s', strtotime("$date $time + $duration minutes"));
+            
+            // Check for overlapping appointments (excluding this one)
+            $overlapCheck = $this->db->prepare("
+                SELECT COUNT(*) FROM appointments 
+                WHERE user_id = ? 
+                  AND id != ?
+                  AND status != 'cancelled'
+                  AND (
+                      (start_time <= ? AND end_time > ?) OR
+                      (start_time < ? AND end_time >= ?) OR
+                      (start_time >= ? AND end_time <= ?)
+                  )
+            ");
+            
+            $overlapCheck->execute([
+                $userId,
+                $id,
+                $endTime, $startTime,
+                $endTime, $endTime,
+                $startTime, $endTime
+            ]);
+            
+            if ($overlapCheck->fetchColumn() > 0) {
+                $_SESSION['error'] = 'This time slot overlaps with an existing appointment';
+                $_SESSION['old'] = $_POST;
+                header("Location: /calendar/edit/{$id}");
+                exit;
+            }
+            
+            // Update appointment - removed title field
+            $query = "
+                UPDATE appointments 
+                SET client_id = ?, 
+                    service_id = ?,
+                    start_time = ?, 
+                    end_time = ?, 
+                    notes = ?,
+                    status = ?
+                WHERE id = ? AND user_id = ?
+            ";
+            
+            $stmt = $this->db->prepare($query);
+            $stmt->execute([
+                $clientId,
+                $serviceId,
+                $startTime,
+                $endTime,
+                $notes,
+                $status,
+                $id,
+                $userId
+            ]);
+            
+            $_SESSION['success'] = 'Appointment updated successfully';
+            
+            // Extract day, month, year from the appointment date for redirect
+            $day = date('j', strtotime($date));
+            $month = date('n', strtotime($date));
+            $year = date('Y', strtotime($date));
+            
+            header("Location: /calendar/day?day=$day&month=$month&year=$year");
+            exit;
+            
+        } catch (PDOException $e) {
+            error_log("Error updating appointment: " . $e->getMessage());
+            $_SESSION['error'] = 'Failed to update appointment: Database error';
+            $_SESSION['old'] = $_POST;
+            header("Location: /calendar/edit/{$id}");
             exit;
         }
     }
     
-    // Helper - Get appointments for date range
-    private function getAppointmentsByDateRange($userId, $startDate, $endDate) {
-        $query = "SELECT a.*, c.name as client_name, s.name as service_name, s.duration as duration
-                 FROM appointments a
-                 JOIN clients c ON a.client_id = c.id
-                 JOIN services s ON a.service_id = s.id
-                 WHERE a.user_id = :userId
-                 AND DATE(a.start_time) BETWEEN :startDate AND :endDate
-                 ORDER BY a.start_time ASC";
-                 
-        $stmt = $this->db->prepare($query);
-        $stmt->bindValue(':userId', $userId, PDO::PARAM_INT);
-        $stmt->bindValue(':startDate', $startDate);
-        $stmt->bindValue(':endDate', $endDate);
-        $stmt->execute();
+    // Delete appointment
+    public function delete($id) {
+        $this->startSession();
         
-        return $stmt->fetchAll();
-    }
-    
-    // Helper - Get appointments for a specific date
-    private function getAppointmentsByDate($userId, $date) {
-        return $this->getAppointmentsByDateRange($userId, $date, $date);
-    }
-    
-    // Helper - Get services for a user
-    private function getServices($userId) {
-        $query = "SELECT * FROM services WHERE user_id = :userId OR user_id = 0 ORDER BY name ASC";
-        $stmt = $this->db->prepare($query);
-        $stmt->bindValue(':userId', $userId, PDO::PARAM_INT);
-        $stmt->execute();
-        
-        return $stmt->fetchAll();
-    }
-    
-    // Helper - Get specific service
-    private function getService($serviceId) {
-        $query = "SELECT * FROM services WHERE id = :serviceId";
-        $stmt = $this->db->prepare($query);
-        $stmt->bindValue(':serviceId', $serviceId, PDO::PARAM_INT);
-        $stmt->execute();
-        
-        return $stmt->fetch();
-    }
-    
-    // Helper - Get clients for a user
-    private function getClients($userId) {
-        $query = "SELECT * FROM clients WHERE user_id = :userId ORDER BY name ASC";
-        $stmt = $this->db->prepare($query);
-        $stmt->bindValue(':userId', $userId, PDO::PARAM_INT);
-        $stmt->execute();
-        
-        return $stmt->fetchAll();
-    }
-    
-    // Helper - Check if time slot is available
-    private function isTimeSlotAvailable($userId, $startTime, $endTime, $excludeAppointmentId = null) {
-        $query = "SELECT COUNT(*) as count FROM appointments 
-                 WHERE user_id = :userId 
-                 AND status != 'cancelled'
-                 AND (
-                     (start_time <= :startTime AND end_time > :startTime) OR
-                     (start_time < :endTime AND end_time >= :endTime) OR
-                     (start_time >= :startTime AND end_time <= :endTime)
-                 )";
-                 
-        if ($excludeAppointmentId) {
-            $query .= " AND id != :excludeId";
+        if (!isset($_SESSION['user'])) {
+            header('Location: /login');
+            exit;
         }
         
-        $stmt = $this->db->prepare($query);
-        $stmt->bindValue(':userId', $userId, PDO::PARAM_INT);
-        $stmt->bindValue(':startTime', $startTime);
-        $stmt->bindValue(':endTime', $endTime);
+        $userId = $_SESSION['user']['id'];
         
-        if ($excludeAppointmentId) {
-            $stmt->bindValue(':excludeId', $excludeAppointmentId, PDO::PARAM_INT);
+        try {
+            // First check if appointment exists and belongs to user
+            $checkQuery = "SELECT id FROM appointments WHERE id = ? AND user_id = ?";
+            $checkStmt = $this->db->prepare($checkQuery);
+            $checkStmt->execute([$id, $userId]);
+            
+            if (!$checkStmt->fetch()) {
+                $_SESSION['error'] = 'Appointment not found';
+                header('Location: /calendar');
+                exit;
+            }
+            
+            // Delete appointment
+            $query = "DELETE FROM appointments WHERE id = ? AND user_id = ?";
+            $stmt = $this->db->prepare($query);
+            $stmt->execute([$id, $userId]);
+            
+            $_SESSION['success'] = 'Appointment deleted successfully';
+            
+            // Determine where to redirect based on referrer
+            $referrer = $_POST['referrer'] ?? '/calendar';
+            header("Location: $referrer");
+            exit;
+            
+        } catch (PDOException $e) {
+            error_log("Error deleting appointment: " . $e->getMessage());
+            $_SESSION['error'] = 'Failed to delete appointment: Database error';
+            header('Location: /calendar');
+            exit;
         }
-        
-        $stmt->execute();
-        $result = $stmt->fetch();
-        
-        return $result['count'] == 0;
-    }
-    
-    // Helper - Create appointment in database
-    private function createAppointmentInDb($userId, $clientId, $serviceId, $startTime, $endTime, $notes) {
-        $query = "INSERT INTO appointments 
-                 (user_id, client_id, service_id, start_time, end_time, status, notes, created_at)
-                 VALUES 
-                 (:userId, :clientId, :serviceId, :startTime, :endTime, :status, :notes, NOW())";
-                 
-        $stmt = $this->db->prepare($query);
-        $stmt->bindValue(':userId', $userId, PDO::PARAM_INT);
-        $stmt->bindValue(':clientId', $clientId, PDO::PARAM_INT);
-        $stmt->bindValue(':serviceId', $serviceId, PDO::PARAM_INT);
-        $stmt->bindValue(':startTime', $startTime);
-        $stmt->bindValue(':endTime', $endTime);
-        $stmt->bindValue(':status', 'confirmed');
-        $stmt->bindValue(':notes', $notes);
-        
-        return $stmt->execute();
-    }
-    
-    // Helper - Get appointment by ID
-    private function getAppointmentById($id, $userId) {
-        $query = "SELECT * FROM appointments WHERE id = :id AND user_id = :userId";
-        $stmt = $this->db->prepare($query);
-        $stmt->bindValue(':id', $id, PDO::PARAM_INT);
-        $stmt->bindValue(':userId', $userId, PDO::PARAM_INT);
-        $stmt->execute();
-        
-        return $stmt->fetch();
-    }
-    
-    // Helper - Update appointment in database
-    private function updateAppointmentInDb($id, $userId, $clientId, $serviceId, $startTime, $endTime, $notes) {
-        $query = "UPDATE appointments 
-                 SET client_id = :clientId, 
-                     service_id = :serviceId, 
-                     start_time = :startTime, 
-                     end_time = :endTime, 
-                     notes = :notes 
-                 WHERE id = :id AND user_id = :userId";
-                 
-        $stmt = $this->db->prepare($query);
-        $stmt->bindValue(':clientId', $clientId, PDO::PARAM_INT);
-        $stmt->bindValue(':serviceId', $serviceId, PDO::PARAM_INT);
-        $stmt->bindValue(':startTime', $startTime);
-        $stmt->bindValue(':endTime', $endTime);
-        $stmt->bindValue(':notes', $notes);
-        $stmt->bindValue(':id', $id, PDO::PARAM_INT);
-        $stmt->bindValue(':userId', $userId, PDO::PARAM_INT);
-        
-        return $stmt->execute();
-    }
-    
-    // Helper - Delete appointment from database
-    private function deleteAppointmentInDb($id, $userId) {
-        $query = "DELETE FROM appointments WHERE id = :id AND user_id = :userId";
-        $stmt = $this->db->prepare($query);
-        $stmt->bindValue(':id', $id, PDO::PARAM_INT);
-        $stmt->bindValue(':userId', $userId, PDO::PARAM_INT);
-        
-        return $stmt->execute();
     }
 }
