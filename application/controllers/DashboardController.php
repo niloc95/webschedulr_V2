@@ -43,6 +43,7 @@ class DashboardController {
         
         $userId = $_SESSION['user']['id'];
         $today = date('Y-m-d');
+        $tomorrow = date('Y-m-d', strtotime('+1 day'));
         
         // Initialize all variables with default values
         $stats = [
@@ -50,26 +51,42 @@ class DashboardController {
             'upcoming_appointments' => 0,
             'total_clients' => 0,
             'total_services' => 0,
+            'today_appointments' => 0,
+            'tomorrow_appointments' => 0
         ];
         
         $upcomingAppointments = [];
+        $todaysAppointments = [];
         $appointmentsByDay = [
             'labels' => ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'],
             'data' => [0, 0, 0, 0, 0, 0, 0]
         ];
+        $statusStats = [
+            'labels' => [],
+            'data' => [],
+            'backgrounds' => []
+        ];
         $recentActivities = [];
+        $recentClients = [];
         
         // Only try to get real data if DB connection succeeded
         if ($this->isConnected) {
             try {
+                // Get basic stats
                 $stats['total_appointments'] = $this->getTotalAppointments($userId);
                 $stats['upcoming_appointments'] = $this->getUpcomingAppointmentsCount($userId, $today);
                 $stats['total_clients'] = $this->getTotalClients($userId);
                 $stats['total_services'] = $this->getTotalServices($userId);
+                $stats['today_appointments'] = $this->getTodayAppointmentsCount($userId, $today);
+                $stats['tomorrow_appointments'] = $this->getTodayAppointmentsCount($userId, $tomorrow);
                 
+                // Get detailed data
                 $upcomingAppointments = $this->getUpcomingAppointments($userId, $today, 7);
+                $todaysAppointments = $this->getTodaysAppointments($userId, $today);
                 $appointmentsByDay = $this->getAppointmentDistribution($userId);
+                $statusStats = $this->getAppointmentStatusStats($userId);
                 $recentActivities = $this->getRecentActivities($userId, 10);
+                $recentClients = $this->getRecentClients($userId, 5);
             } catch (Exception $e) {
                 // Log any errors but continue with defaults
                 error_log("Error retrieving dashboard data: " . $e->getMessage());
@@ -107,6 +124,23 @@ class DashboardController {
         $stmt = $this->db->prepare($query);
         $stmt->bindValue(':userId', $userId, PDO::PARAM_INT);
         $stmt->bindValue(':today', $today);
+        $stmt->execute();
+        
+        return (int) $stmt->fetch()['count'];
+    }
+    
+    // Get count of today's appointments
+    private function getTodayAppointmentsCount($userId, $date) {
+        if (!$this->isConnected) return 0;
+        
+        $query = "SELECT COUNT(*) as count FROM appointments 
+                 WHERE user_id = :userId 
+                 AND DATE(start_time) = :date
+                 AND status != 'cancelled'";
+        
+        $stmt = $this->db->prepare($query);
+        $stmt->bindValue(':userId', $userId, PDO::PARAM_INT);
+        $stmt->bindValue(':date', $date);
         $stmt->execute();
         
         return (int) $stmt->fetch()['count'];
@@ -156,7 +190,7 @@ class DashboardController {
         
         $endDate = date('Y-m-d', strtotime($today . ' + ' . $days . ' days'));
         
-        $query = "SELECT a.*, c.name as client_name, c.email as client_email, s.name as service_name, s.duration
+        $query = "SELECT a.*, c.name as client_name, c.email as client_email, s.name as service_name, s.duration, s.color
                  FROM appointments a
                  JOIN clients c ON a.client_id = c.id
                  JOIN services s ON a.service_id = s.id
@@ -169,6 +203,26 @@ class DashboardController {
         $stmt->bindValue(':userId', $userId, PDO::PARAM_INT);
         $stmt->bindValue(':today', $today);
         $stmt->bindValue(':endDate', $endDate);
+        $stmt->execute();
+        
+        return $stmt->fetchAll();
+    }
+    
+    // Get today's appointments
+    private function getTodaysAppointments($userId, $today) {
+        if (!$this->isConnected) return [];
+        
+        $query = "SELECT a.*, c.name as client_name, c.email as client_email, s.name as service_name, s.duration, s.color
+                 FROM appointments a
+                 JOIN clients c ON a.client_id = c.id
+                 JOIN services s ON a.service_id = s.id
+                 WHERE a.user_id = :userId
+                 AND DATE(a.start_time) = :today
+                 ORDER BY a.start_time ASC";
+        
+        $stmt = $this->db->prepare($query);
+        $stmt->bindValue(':userId', $userId, PDO::PARAM_INT);
+        $stmt->bindValue(':today', $today);
         $stmt->execute();
         
         return $stmt->fetchAll();
@@ -223,7 +277,54 @@ class DashboardController {
         return $chartData;
     }
     
-    // Get recent activities (this is the complete method that was cut off)
+    // Get appointments by status for pie chart
+    private function getAppointmentStatusStats($userId) {
+        if (!$this->isConnected) return [
+            'labels' => [],
+            'data' => [],
+            'backgrounds' => []
+        ];
+        
+        $query = "SELECT 
+                   status,
+                   COUNT(*) as count
+                 FROM appointments
+                 WHERE user_id = :userId
+                 GROUP BY status
+                 ORDER BY status";
+        
+        $stmt = $this->db->prepare($query);
+        $stmt->bindValue(':userId', $userId, PDO::PARAM_INT);
+        $stmt->execute();
+        
+        $results = $stmt->fetchAll();
+        
+        // Define status colors
+        $statusColors = [
+            'pending' => '#ffc107',    // warning
+            'confirmed' => '#28a745', // success
+            'completed' => '#007bff', // primary
+            'cancelled' => '#dc3545'  // danger
+        ];
+        
+        $labels = [];
+        $data = [];
+        $backgrounds = [];
+        
+        foreach ($results as $row) {
+            $labels[] = ucfirst($row['status']);
+            $data[] = (int)$row['count'];
+            $backgrounds[] = $statusColors[$row['status']] ?? '#6c757d'; // default gray
+        }
+        
+        return [
+            'labels' => $labels,
+            'data' => $data,
+            'backgrounds' => $backgrounds
+        ];
+    }
+    
+    // Get recent activities
     private function getRecentActivities($userId, $limit = 10) {
         if (!$this->isConnected) return [];
         
@@ -240,6 +341,24 @@ class DashboardController {
                  JOIN services s ON a.service_id = s.id
                  WHERE a.user_id = :userId
                  ORDER BY a.created_at DESC
+                 LIMIT :limit";
+        
+        $stmt = $this->db->prepare($query);
+        $stmt->bindValue(':userId', $userId, PDO::PARAM_INT);
+        $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
+        $stmt->execute();
+        
+        return $stmt->fetchAll();
+    }
+    
+    // Get recent clients
+    private function getRecentClients($userId, $limit = 5) {
+        if (!$this->isConnected) return [];
+        
+        $query = "SELECT *
+                 FROM clients
+                 WHERE user_id = :userId
+                 ORDER BY created_at DESC
                  LIMIT :limit";
         
         $stmt = $this->db->prepare($query);

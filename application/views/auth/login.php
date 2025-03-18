@@ -9,18 +9,23 @@ $title = 'Login';
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?= $title ?> - WebSchedulr</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
     <link rel="stylesheet" href="/css/app.css">
 </head>
 <body>
     <div class="auth-page">
         <div class="auth-card card">
-            <div class="card-header">
-                <div class="text-center mb-3">
-                    <img src="/assets/images/logo_black.png" alt="WebSchedulr" height="40" class="app-logo">
+            <div class="card-header text-center">
+                <div class="logo-container">
+                    <img src="/assets/images/logo_black.png" alt="WebSchedulr" class="app-logo">
                 </div>
-                <h3 class="auth-title">Welcome Back</h3>
-                <p class="auth-subtitle">Log in to your account to continue</p>
+                <div class="header-text">
+                    <h3 class="auth-title fw-bold">Admin Login</h3>
+                    
+                </div>
             </div>
             
             <div class="card-body">
@@ -36,15 +41,14 @@ $title = 'Login';
                 <form method="POST" action="<?= site_url('login') ?>" class="auth-form">
                     <div class="form-group">
                         <label for="email" class="form-label">Email Address</label>
-                        <input type="email" name="email" id="email" class="form-control" required autofocus>
+                        <input type="email" name="email" id="email" class="form-control w-100" required autofocus>
                     </div>
                     
                     <div class="form-group">
                         <div class="d-flex justify-content-between">
                             <label for="password" class="form-label">Password</label>
-                           
                         </div>
-                        <input type="password" name="password" id="password" class="form-control" required>
+                        <input type="password" name="password" id="password" class="form-control w-100" required>
                     </div>
                     
                     <div class="form-group">

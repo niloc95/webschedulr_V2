@@ -175,3 +175,6 @@ class Router {
         }
     }
 }
+
+// Find where routes are defined and add:
+// $router->get('/clients/debug', 'ClientController@debug');

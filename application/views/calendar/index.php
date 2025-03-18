@@ -1,6 +1,8 @@
 <?php
 $active = 'calendar';
 $title = 'Calendar';
+// No need to explicitly include calendar.css, it's handled automatically by the header
+
 include __DIR__ . '/../layouts/header.php';
 ?>
 
@@ -8,7 +10,7 @@ include __DIR__ . '/../layouts/header.php';
     <!-- Page Heading -->
     <div class="d-sm-flex align-items-center justify-content-between mb-4">
         <h1 class="h3 mb-0 text-gray-800">Calendar</h1>
-        <a href="/calendar/create" class="d-none d-sm-inline-block btn btn-sm btn-primary shadow-sm">
+        <a href="/calendar/create" class="btn btn-primary shadow-sm">
             <i class="bi bi-plus"></i> New Appointment
         </a>
     </div>
@@ -27,6 +29,51 @@ include __DIR__ . '/../layouts/header.php';
         <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
     </div>
     <?php unset($_SESSION['error']); endif; ?>
+
+    <!-- Quick Actions Row -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Quick Actions</h6>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-lg-3 col-md-6 mb-3">
+                            <a href="/calendar/create" class="btn btn-primary d-block py-3">
+                                <i class="bi bi-calendar-plus me-2"></i> New Appointment
+                            </a>
+                        </div>
+                        <div class="col-lg-3 col-md-6 mb-3">
+                            <a href="/clients/create" class="btn btn-success d-block py-3">
+                                <i class="bi bi-person-plus me-2"></i> New Client
+                            </a>
+                        </div>
+                        <div class="col-lg-3 col-md-6 mb-3">
+                            <a href="/services/create" class="btn btn-info d-block py-3">
+                                <i class="bi bi-tools me-2"></i> New Service
+                            </a>
+                        </div>
+                        <div class="col-lg-3 col-md-6 mb-3">
+                            <a href="/appointments" class="btn btn-secondary d-block py-3">
+                                <i class="bi bi-list-check me-2"></i> View All Appointments
+                            </a>
+                        </div>
+                    </div>
+                    
+                    <div class="row mt-3">
+                        <div class="col-lg-6">
+                            <h6 class="font-weight-bold">Jump to Date</h6>
+                            <form action="/calendar/day" method="get" class="input-group">
+                                <input type="date" class="form-control" name="date" value="<?= date('Y-m-d') ?>">
+                                <button class="btn btn-outline-primary" type="submit">View Day</button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <!-- Calendar Navigation -->
     <div class="card shadow mb-4">
@@ -117,85 +164,5 @@ include __DIR__ . '/../layouts/header.php';
         </div>
     </div>
 </div>
-
-<style>
-.calendar-table {
-    table-layout: fixed;
-    height: 800px;
-}
-
-.calendar-day {
-    height: 120px;
-    position: relative;
-    vertical-align: top;
-    transition: background 0.2s;
-    padding: 0;
-}
-
-.calendar-day:hover {
-    background-color: #f8f9fa;
-}
-
-.calendar-day.empty {
-    background-color: #f6f6f6;
-}
-
-.calendar-day.today {
-    background-color: #e8f4ff;
-}
-
-.calendar-day-number {
-    padding: 5px 8px;
-    font-weight: bold;
-    display: inline-block;
-}
-
-.calendar-day-number a {
-    color: inherit;
-    text-decoration: none;
-}
-
-.calendar-day.today .calendar-day-number {
-    background-color: #007bff;
-    color: white;
-    border-radius: 50%;
-    width: 30px;
-    height: 30px;
-    text-align: center;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    margin: 5px;
-}
-
-.appointment-list {
-    max-height: 80%;
-    overflow-y: auto;
-    padding: 0 4px;
-}
-
-.appointment-item {
-    font-size: 0.8rem;
-    padding: 2px 4px;
-    margin-bottom: 2px;
-    background-color: white;
-    border-radius: 3px;
-    box-shadow: 0 1px 2px rgba(0,0,0,0.1);
-    overflow: hidden;
-    white-space: nowrap;
-    text-overflow: ellipsis;
-}
-
-.appointment-item a {
-    color: #333;
-    text-decoration: none;
-    display: block;
-}
-
-.appointment-time {
-    font-weight: bold;
-    font-size: 0.75rem;
-}
-</style>
 
 <?php include __DIR__ . '/../layouts/footer.php'; ?>

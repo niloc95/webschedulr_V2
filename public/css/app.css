@@ -2,12 +2,13 @@
 
 /* Base */
 body {
-  font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-  background-color: #f8fafc;
-  color: #1e293b;
+  font-family: 'Inter', system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  background-color: var(--bg-secondary);
+  color: var(--text-primary);
   line-height: 1.5;
   margin: 0;
   padding: 0;
+  transition: background-color 0.3s ease, color 0.3s ease;
 }
 
 /* Layout */
@@ -222,19 +223,18 @@ body {
   flex-direction: column;
   min-width: 0;
   word-wrap: break-word;
-  background-color: #fff;
+  background-color: var(--card-bg);
   background-clip: border-box;
-  border: 1px solid rgba(0, 0, 0, 0.125);
+  border: 1px solid var(--border-color);
   border-radius: 0.5rem;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--card-shadow);
   margin-bottom: 1.5rem;
 }
 
 .card-header {
-  padding: 1rem 1.25rem;
-  margin-bottom: 0;
-  background-color: #fff;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.125);
+  padding: 2rem 1.5rem;
+  background-color: var(--card-bg);
+  border-bottom: 1px solid var(--border-color);
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -242,7 +242,7 @@ body {
 
 .card-body {
   flex: 1 1 auto;
-  padding: 1.25rem;
+  padding: 1.5rem;
 }
 
 .card-footer {
@@ -312,14 +312,48 @@ body {
 
 .auth-card {
   width: 100%;
-  max-width: 400px;
+  max-width: 450px;
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.auth-card {
+    max-width: 450px;
+    margin: 0 auto;
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+.auth-card {
+    width: 100%;
+    max-width: 450px;
+    margin: 0 auto;
+    border-radius: 10px;
+    box-shadow: 0 4px 25px rgba(0, 0, 0, 0.1);
+    overflow: hidden;
 }
 
 .auth-card .card-header {
   background-color: white;
   border-bottom: none;
   padding-top: 2rem;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+}
+
+.logo-container {
+  margin-bottom: 1.5rem;
+  display: block;
+  width: 100%;
+  text-align: center;
+}
+
+.header-text {
+  display: block;
+  width: 100%;
   text-align: center;
 }
 
@@ -328,12 +362,26 @@ body {
   font-weight: 600;
   margin-bottom: 0.5rem;
   text-align: center;
+  display: block;
+  margin-bottom: 0.75rem;
+}
+
+.auth-title {
+    font-size: 1.5rem;
 }
 
 .auth-subtitle {
   color: #64748b;
   font-size: 0.875rem;
   text-align: center;
+  display: block;
+  font-size: 0.9rem;
+  margin-bottom: 0;
+}
+
+.auth-subtitle {
+    font-size: 0.9rem;
+    margin-bottom: 0.5rem;
 }
 
 .auth-form .form-group {
@@ -389,6 +437,16 @@ body {
   border-color: #3b82f6;
   outline: 0;
   box-shadow: 0 0 0 0.2rem rgba(59, 130, 246, 0.25);
+}
+
+.auth-form .form-control {
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.form-control {
+    width: 100%;
+    box-sizing: border-box;
 }
 
 .form-text {
@@ -663,13 +721,59 @@ body {
   --danger: #e74a3b;
   --light: #f8f9fc;
   --dark: #5a5c69;
+  /* Light Theme (default) */
+  --bg-primary: #ffffff;
+  --bg-secondary: #f8f9fc;
+  --text-primary: #1e293b;
+  --text-secondary: #64748b;
+  --border-color: #e2e8f0;
+  --card-bg: #ffffff;
+  --card-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  --primary-color: #4e73df;
+  --sidebar-bg: linear-gradient(180deg, #4e73df 10%, #224abe 100%);
 }
+
+/* Dark Theme */
+.dark-theme {
+  --bg-primary: #1e1e2d;
+  --bg-secondary: #151521;
+  --text-primary: #e2e8f0;
+  --text-secondary: #a0aec0;
+  --border-color: #2d3748;
+  --card-bg: #252536;
+  --card-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+  --primary-color: #3b82f6;
+  --sidebar-bg: linear-gradient(180deg, #252536 10%, #1e1e2d 100%);
+}
+
+/* Dark theme specific overrides */
+.dark-theme .table th,
+.dark-theme .table td {
+  border-top: 1px solid var(--border-color);
+}
+
+.dark-theme .form-control {
+  background-color: #2d3748;
+  border-color: #4a5568;
+  color: var(--text-primary);
+}
+
+.dark-theme .form-control:focus {
+  background-color: #2d3748;
+  border-color: var(--primary-color);
+}
+
+/* Logo handling in dark mode */
+.dark-theme .app-logo:not(.sidebar-logo) {
+  filter: brightness(0) invert(1);
+}
+
+/* Add more dark mode specific styles as needed */
 
 /* Sidebar */
 .sidebar {
   width: 225px;
-  background-color: #4e73df;
-  background-image: linear-gradient(180deg, #4e73df 10%, #224abe 100%);
+  background-image: var(--sidebar-bg);
   background-size: cover;
   min-height: 100vh;
   transition: width 0.2s ease-in-out;
@@ -880,6 +984,53 @@ footer.sticky-footer .copyright {
   margin: 0 auto;
 }
 
+.auth-card {
+    max-width: 450px;
+    margin: 0 auto;
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+.auth-page {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    background-color: #f8f9fa;
+    padding: 20px;
+}
+
+.auth-card {
+    width: 100%;
+    max-width: 450px;
+    margin: 0 auto;
+    border-radius: 10px;
+    box-shadow: 0 4px 25px rgba(0, 0, 0, 0.1);
+    overflow: hidden;
+}
+
+.logo-container {
+    margin-bottom: 1.5rem;
+    display: block;
+}
+
+.header-text {
+    display: block;
+}
+
+.auth-title {
+    display: block;
+    margin-bottom: 0.75rem;
+    font-size: 1.5rem;
+}
+
+.auth-subtitle {
+    display: block;
+    font-size: 0.9rem;
+    margin-bottom: 0;
+}
+
 /* Utility classes */
 .bg-gradient-primary {
   background-color: #4e73df;
@@ -927,4 +1078,56 @@ footer.sticky-footer .copyright {
   background-color: #5a5c69;
   background-image: linear-gradient(180deg, #5a5c69 10%, #373840 100%);
   background-size: cover;
+}
+
+.form-group {
+    margin-bottom: 1.25rem;
+}
+
+.form-control {
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.submit-btn {
+    width: 100%;
+    padding: 0.6rem;
+}
+
+/* Add to /home/nilo/projects/webschedulr/public/css/app.css */
+.app-logo {
+    max-height: 80px;
+    width: auto;
+    height: auto;
+}
+
+/* Add responsive scaling for different screen sizes */
+@media (max-width: 576px) {
+    .app-logo {
+        max-height: 60px;
+    }
+}
+
+@media (min-width: 768px) {
+    .app-logo {
+        max-height: 80px;
+    }
+}
+
+@media (min-width: 992px) {
+    .app-logo {
+        max-height: 100px;
+    }
+}
+
+/* Add to /home/nilo/projects/webschedulr/public/css/app.css */
+.sidebar-logo {
+    max-height: 40px;
+    width: auto;
+}
+
+/* If your sidebar has a dark background, use a white/light logo instead, 
+   or add this filter to make the logo appear white */
+.sidebar-dark .app-logo {
+    filter: brightness(0) invert(1);
 }

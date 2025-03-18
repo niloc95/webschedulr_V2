@@ -29,10 +29,17 @@ $router->get('/calendar', function() {
     $controller->index();
 });
 
+$router->get('/calendar/day/([0-9]{4}-[0-9]{2}-[0-9]{2})', function($date) {
+    require_once __DIR__ . '/../application/controllers/CalendarController.php';
+    $controller = new CalendarController();
+    $controller->day($date);
+});
+
 $router->get('/calendar/day', function() {
     require_once __DIR__ . '/../application/controllers/CalendarController.php';
     $controller = new CalendarController();
-    $controller->day();
+    $date = isset($_GET['date']) ? $_GET['date'] : date('Y-m-d');
+    $controller->day($date);
 });
 
 $router->get('/calendar/create', function() {
@@ -41,32 +48,28 @@ $router->get('/calendar/create', function() {
     $controller->create();
 });
 
-$router->post('/calendar/create', function() {
+$router->post('/calendar/save', function() {
     require_once __DIR__ . '/../application/controllers/CalendarController.php';
     $controller = new CalendarController();
-    $controller->store();
+    $controller->save();
 });
 
-// IMPORTANT - This is the key route that's being overridden
-$router->get('/calendar/edit/:id', function($id) use ($debugRouting) {  // Add "use ($debugRouting)" here
-    if ($debugRouting) {
-        echo "DEBUG: Calendar edit route matched with ID: $id<br>";
-    }
+$router->get('/calendar/edit/([0-9]+)', function($id) {
     require_once __DIR__ . '/../application/controllers/CalendarController.php';
     $controller = new CalendarController();
     $controller->edit($id);
 });
 
-$router->post('/calendar/update/:id', function($id) {
-    require_once __DIR__ . '/../application/controllers/CalendarController.php';
-    $controller = new CalendarController();
-    $controller->update($id);
-});
-
-$router->post('/calendar/delete/:id', function($id) {
+$router->post('/calendar/delete/([0-9]+)', function($id) {
     require_once __DIR__ . '/../application/controllers/CalendarController.php';
     $controller = new CalendarController();
     $controller->delete($id);
+});
+
+$router->post('/calendar/update-status', function() {
+    require_once __DIR__ . '/../application/controllers/CalendarController.php';
+    $controller = new CalendarController();
+    $controller->updateStatus();
 });
 
 // =============================================================================
@@ -90,8 +93,7 @@ $router->post('/services/store', function() {
     $controller->store();
 });
 
-// IMPORTANT - Use a consistent format for route parameters
-$router->get('/services/edit/:id', function($id) use ($debugRouting) {  // Add "use ($debugRouting)" here
+$router->get('/services/edit/:id', function($id) use ($debugRouting) {
     if ($debugRouting) {
         echo "DEBUG: Service edit route matched with ID: $id<br>";
     }
@@ -110,6 +112,12 @@ $router->post('/services/delete/:id', function($id) {
     require_once __DIR__ . '/../application/controllers/ServiceController.php';
     $controller = new ServiceController();
     $controller->delete($id);
+});
+
+$router->post('/services/ajax-create', function() {
+    require_once __DIR__ . '/../application/controllers/ServiceController.php';
+    $controller = new ServiceController();
+    $controller->ajaxCreate();
 });
 
 // =============================================================================
@@ -157,32 +165,31 @@ $router->post('/clients/delete/:id', function($id) {
     $controller->delete($id);
 });
 
-// Add this route for AJAX client creation
 $router->post('/clients/ajax-create', function() {
     require_once __DIR__ . '/../application/controllers/ClientController.php';
     $controller = new ClientController();
     $controller->ajaxCreate();
 });
 
-// Add this route for AJAX service creation
-$router->post('/services/ajax-create', function() {
-    require_once __DIR__ . '/../application/controllers/ServiceController.php';
-    $controller = new ServiceController();
-    $controller->ajaxCreate();
+// =============================================================================
+// APPOINTMENT ROUTES
+// =============================================================================
+$router->get('/appointments', function() {
+    require_once __DIR__ . '/../application/controllers/AppointmentController.php';
+    $controller = new AppointmentController();
+    $controller->index();
 });
 
-// Add this route for updating appointment status
-$router->post('/calendar/update-status', function() {
-    require_once __DIR__ . '/../application/controllers/CalendarController.php';
-    $controller = new CalendarController();
-    $controller->updateStatus();
+$router->get('/appointments/schema', function() {
+    require_once __DIR__ . '/../application/controllers/AppointmentController.php';
+    $controller = new AppointmentController();
+    $controller->showSchema();
 });
 
 // =============================================================================
 // DASHBOARD ROUTES
 // =============================================================================
 $router->get('/dashboard', function() {
-    // Check if user is logged in
     session_start();
     if (!isset($_SESSION['user'])) {
         header('Location: /login');
@@ -195,10 +202,26 @@ $router->get('/dashboard', function() {
 });
 
 // =============================================================================
+// CLIENT QUICK ADD ROUTES
+// =============================================================================
+
+$router->post('/clients/quick-add', function() {
+    require_once __DIR__ . '/../application/controllers/ClientController.php';
+    $controller = new ClientController();
+    $controller->quickAdd();
+});
+
+// Service quick add
+$router->post('/services/quick-add', function() {
+    require_once __DIR__ . '/../application/controllers/ServiceController.php';
+    $controller = new ServiceController();
+    $controller->quickAdd();
+});
+
+// =============================================================================
 // AUTH ROUTES
 // =============================================================================
 $router->get('/login', function() {
-    // Start session to check for success message
     session_start();
     include __DIR__ . '/../application/views/auth/login.php';
 });
@@ -213,7 +236,6 @@ $router->post('/login', function() {
         return;
     }
     
-    // Connect to database
     try {
         $db = new PDO(
             "mysql:host=" . Config::DB_HOST . ";dbname=" . Config::DB_NAME . ";charset=utf8mb4",
@@ -226,15 +248,12 @@ $router->post('/login', function() {
             ]
         );
         
-        // Get user from database
         $stmt = $db->prepare("SELECT * FROM users WHERE email = :email LIMIT 1");
         $stmt->bindValue(':email', $email);
         $stmt->execute();
         $user = $stmt->fetch();
         
-        // Verify password
         if ($user && password_verify($password, $user['password'])) {
-            // Login successful
             session_start();
             $_SESSION['user'] = [
                 'id' => $user['id'],
@@ -245,7 +264,6 @@ $router->post('/login', function() {
             header('Location: /dashboard');
             exit;
         } else {
-            // Special case for demo admin user with plain text password
             if ($email === 'admin@webschedulr.com' && $password === 'admin123') {
                 session_start();
                 $_SESSION['user'] = [
@@ -258,17 +276,14 @@ $router->post('/login', function() {
                 exit;
             }
             
-            // Login failed
             $error = "Invalid email or password";
             include __DIR__ . '/../application/views/auth/login.php';
             return;
         }
         
     } catch (PDOException $e) {
-        // Log the error (in a production app)
         $error = "An error occurred while logging in. Please try again.";
         
-        // For debugging:
         if (Config::DEBUG_MODE) {
             $error = "Database error: " . $e->getMessage();
         }
@@ -284,7 +299,6 @@ $router->get('/register', function() {
 
 $router->post('/register', function() {
     // Form data processing...
-    // [Keep your existing code here]
 });
 
 $router->get('/logout', function() {
@@ -294,7 +308,6 @@ $router->get('/logout', function() {
     exit;
 });
 
-// Redirect root URL to dashboard for logged in users or login page otherwise
 $router->get('/', function() {
     if (session_status() === PHP_SESSION_NONE) {
         session_start();
@@ -306,6 +319,73 @@ $router->get('/', function() {
         header('Location: /login');
     }
     exit;
+});
+
+// Initialize Router
+// Define Routes
+// ...existing routes
+
+// Calendar Routes
+$router->get('/calendar', function() {
+    require_once __DIR__ . '/../application/controllers/CalendarController.php';
+    $controller = new CalendarController();
+    $controller->index();
+});
+
+// Calendar Day View - with direct date parameter
+$router->get('/calendar/day/([0-9]{4}-[0-9]{2}-[0-9]{2})', function($date) {
+    require_once __DIR__ . '/../application/controllers/CalendarController.php';
+    $controller = new CalendarController();
+    $controller->day($date);
+});
+
+// Calendar Day View - with query parameters
+$router->get('/calendar/day', function() {
+    require_once __DIR__ . '/../application/controllers/CalendarController.php';
+    $controller = new CalendarController();
+    $controller->day();
+});
+
+// Create Appointment Form
+$router->get('/calendar/create', function() {
+    require_once __DIR__ . '/../application/controllers/CalendarController.php';
+    $controller = new CalendarController();
+    $controller->create();
+});
+
+// Store New Appointment
+$router->post('/calendar/store', function() {
+    require_once __DIR__ . '/../application/controllers/CalendarController.php';
+    $controller = new CalendarController();
+    $controller->store();
+});
+
+// Edit Appointment Form
+$router->get('/calendar/edit/([0-9]+)', function($id) {
+    require_once __DIR__ . '/../application/controllers/CalendarController.php';
+    $controller = new CalendarController();
+    $controller->edit($id);
+});
+
+// Update Appointment
+$router->post('/calendar/update/([0-9]+)', function($id) {
+    require_once __DIR__ . '/../application/controllers/CalendarController.php';
+    $controller = new CalendarController();
+    $controller->update($id);
+});
+
+// Delete Appointment
+$router->post('/calendar/delete/([0-9]+)', function($id) {
+    require_once __DIR__ . '/../application/controllers/CalendarController.php';
+    $controller = new CalendarController();
+    $controller->delete($id);
+});
+
+// Update Appointment Status (AJAX)
+$router->post('/calendar/update-status', function() {
+    require_once __DIR__ . '/../application/controllers/CalendarController.php';
+    $controller = new CalendarController();
+    $controller->updateStatus();
 });
 
 // =============================================================================
@@ -333,6 +413,10 @@ $router->get('/diagnostic/services', function() {
     require_once __DIR__ . '/../application/controllers/DiagnosticController.php';
     $controller = new DiagnosticController();
     $controller->testServicesTable();
+});
+
+$router->get('/diagnostic/table-structure', function() {
+    include __DIR__ . '/../application/views/diagnostic/table-structure.php';
 });
 
 // 404 handler

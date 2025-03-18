@@ -9,27 +9,17 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
     <!-- Bootstrap Icons -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.3/font/bootstrap-icons.css">
+    <!-- DataTables -->
+    <link href="https://cdn.jsdelivr.net/npm/simple-datatables@latest/dist/style.css" rel="stylesheet" type="text/css">
     
-    <!-- Custom styles - Make sure these are loading correctly -->
+    <!-- Custom styles -->
     <link href="/css/app.css" rel="stylesheet">
-    <link href="/css/calendar.css" rel="stylesheet">
-    
-    <!-- Debug styles -->
-    <script>
-        // Check if styles are loading
-        window.addEventListener('load', function() {
-            const appStyles = document.querySelector('link[href="/css/app.css"]');
-            const calendarStyles = document.querySelector('link[href="/css/calendar-fix.css"]');
-            
-            if (appStyles && !appStyles.sheet) {
-                console.error('Warning: app.css failed to load');
-            }
-            
-            if (calendarStyles && !calendarStyles.sheet) {
-                console.error('Warning: calendar-fix.css failed to load');
-            }
-        });
-    </script>
+
+    <!-- Page-specific styles -->
+    <?php if (in_array($active, ['calendar', 'appointment'])): ?>
+        <link href="/css/calendar.css" rel="stylesheet">
+        <link href="/css/appointment.css" rel="stylesheet">
+    <?php endif; ?>
 </head>
 <body id="page-top">
     <!-- Rest of your header content -->
@@ -39,10 +29,9 @@
         <ul class="navbar-nav bg-gradient-primary sidebar sidebar-dark accordion" id="accordionSidebar">
             <!-- Sidebar - Brand -->
             <a class="sidebar-brand d-flex align-items-center justify-content-center" href="/">
-                <div class="sidebar-brand-icon">
-                    <i class="bi bi-calendar-check"></i>
+                <div class="logo-container">
+                    <img src="/assets/images/logo_black.png" alt="WebSchedulr" class="app-logo sidebar-logo">
                 </div>
-                <div class="sidebar-brand-text mx-3">WebSchedulr</div>
             </a>
 
             <!-- Divider -->
@@ -73,10 +62,10 @@
             </li>
 
             <!-- Nav Item - Appointments -->
-            <li class="nav-item <?= ($active ?? '') === 'appointments' ? 'active' : '' ?>">
+            <li class="nav-item <?= $active == 'appointments' ? 'active' : '' ?>">
                 <a class="nav-link" href="/appointments">
-                    <i class="bi bi-clock"></i>
-                    <span>Appointments</span>
+                <i class="bi bi-calendar-check"></i>
+                <span>Appointments</span>
                 </a>
             </li>
 
@@ -173,6 +162,11 @@
                                     Logout
                                 </a>
                             </div>
+                        </li>
+                        <li class="nav-item">
+                            <button id="themeToggle" class="btn btn-link nav-link">
+                                <i class="bi bi-moon" id="themeIcon"></i>
+                            </button>
                         </li>
                     </ul>
                 </nav>

@@ -1,133 +1,98 @@
 <?php
 $active = 'dashboard';
 $title = 'Dashboard';
-
-// Initialize default variables to prevent undefined variable errors
-$stats = $stats ?? [
-    'total_appointments' => 0,
-    'upcoming_appointments' => 0, 
-    'total_clients' => 0,
-    'total_services' => 0
-];
-
-$upcomingAppointments = $upcomingAppointments ?? [];
-
-$calendarData = $calendarData ?? [
-    'month' => date('F Y'),
-    'firstDay' => mktime(0, 0, 0, date('n'), 1, date('Y')),
-    'numDays' => date('t'),
-    'firstDayOfWeek' => date('w', mktime(0, 0, 0, date('n'), 1, date('Y')))
-];
-
-$appointmentsByDay = $appointmentsByDay ?? [
-    'labels' => ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'],
-    'data' => [0, 0, 0, 0, 0, 0, 0]
-];
-
-$recentActivities = $recentActivities ?? [];
-
-// Include header
 include __DIR__ . '/../layouts/header.php';
 
-// Helper function to format dates for display
-function formatDateForDisplay($dateString) {
-    $date = new DateTime($dateString);
-    $today = new DateTime('today');
-    $tomorrow = new DateTime('tomorrow');
-    
-    if ($date->format('Y-m-d') === $today->format('Y-m-d')) {
-        return 'Today, ' . $date->format('g:i A');
-    } elseif ($date->format('Y-m-d') === $tomorrow->format('Y-m-d')) {
-        return 'Tomorrow, ' . $date->format('g:i A');
-    } else {
-        return $date->format('D, M j') . ' at ' . $date->format('g:i A');
+// Helper function to get status badge class
+function getStatusBadgeClass($status) {
+    switch($status) {
+        case 'confirmed': return 'success';
+        case 'completed': return 'primary';
+        case 'cancelled': return 'danger';
+        case 'pending':
+        default: return 'warning';
     }
 }
 ?>
 
-<!-- REST OF YOUR DASHBOARD VIEW REMAINS THE SAME -->
 <div class="container-fluid">
     <!-- Page Heading -->
     <div class="d-sm-flex align-items-center justify-content-between mb-4">
-        <h1 class="h3 mb-0 text-gray-800">Welcome, <?= htmlspecialchars($_SESSION['user']['name'] ?? 'User') ?></h1>
-        <div>
-            <span class="mr-2 d-none d-lg-inline text-gray-600">
-                Today is <?= date('F j, Y') ?>
-            </span>
-            <a href="/calendar/create" class="d-none d-sm-inline-block btn btn-sm btn-primary shadow-sm">
-                <i class="bi bi-plus"></i> New Appointment
-            </a>
-        </div>
+        <h1 class="h3 mb-0 text-gray-800">Dashboard</h1>
+        <a href="/calendar/create" class="d-none d-sm-inline-block btn btn-primary shadow-sm">
+            <i class="bi bi-plus"></i> New Appointment
+        </a>
     </div>
 
-    <!-- Stats Cards -->
+    <!-- Content Row - Stats Cards -->
     <div class="row">
-        <!-- Total Appointments Card -->
+        <!-- Upcoming Appointments Card -->
         <div class="col-xl-3 col-md-6 mb-4">
             <div class="card border-left-primary shadow h-100 py-2">
                 <div class="card-body">
                     <div class="row no-gutters align-items-center">
                         <div class="col mr-2">
                             <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
-                                Total Appointments</div>
-                            <div class="h5 mb-0 font-weight-bold text-gray-800"><?= $stats['total_appointments'] ?></div>
+                                Upcoming Appointments</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800"><?= $stats['upcoming_appointments'] ?></div>
                         </div>
                         <div class="col-auto">
-                            <i class="bi bi-calendar-check fa-2x text-gray-300"></i>
+                            <i class="bi bi-calendar-check fs-2 text-gray-300"></i>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- Upcoming Appointments Card -->
+        <!-- Today's Appointments Card -->
         <div class="col-xl-3 col-md-6 mb-4">
             <div class="card border-left-success shadow h-100 py-2">
                 <div class="card-body">
                     <div class="row no-gutters align-items-center">
                         <div class="col mr-2">
                             <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
-                                Upcoming Appointments</div>
-                            <div class="h5 mb-0 font-weight-bold text-gray-800"><?= $stats['upcoming_appointments'] ?></div>
+                                Today's Appointments</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800"><?= $stats['today_appointments'] ?></div>
                         </div>
                         <div class="col-auto">
-                            <i class="bi bi-clock fa-2x text-gray-300"></i>
+                            <i class="bi bi-calendar-day fs-2 text-gray-300"></i>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- Clients Card -->
+        <!-- Tomorrow's Appointments Card -->
         <div class="col-xl-3 col-md-6 mb-4">
             <div class="card border-left-info shadow h-100 py-2">
                 <div class="card-body">
                     <div class="row no-gutters align-items-center">
                         <div class="col mr-2">
-                            <div class="text-xs font-weight-bold text-info text-uppercase mb-1">Clients
+                            <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
+                                Tomorrow's Appointments
                             </div>
-                            <div class="h5 mb-0 font-weight-bold text-gray-800"><?= $stats['total_clients'] ?></div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800"><?= $stats['tomorrow_appointments'] ?></div>
                         </div>
                         <div class="col-auto">
-                            <i class="bi bi-people fa-2x text-gray-300"></i>
+                            <i class="bi bi-calendar-plus fs-2 text-gray-300"></i>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- Services Card -->
+        <!-- Date Card -->
         <div class="col-xl-3 col-md-6 mb-4">
             <div class="card border-left-warning shadow h-100 py-2">
                 <div class="card-body">
                     <div class="row no-gutters align-items-center">
                         <div class="col mr-2">
                             <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
-                                Services</div>
-                            <div class="h5 mb-0 font-weight-bold text-gray-800"><?= $stats['total_services'] ?></div>
+                                Today's Date</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800"><?= date('M j, Y') ?></div>
                         </div>
                         <div class="col-auto">
-                            <i class="bi bi-tags fa-2x text-gray-300"></i>
+                            <i class="bi bi-calendar3 fs-2 text-gray-300"></i>
                         </div>
                     </div>
                 </div>
@@ -135,33 +100,32 @@ function formatDateForDisplay($dateString) {
         </div>
     </div>
 
-    <!-- Content Row -->
+    <!-- Content Row - Main Content -->
     <div class="row">
-        <!-- Upcoming Appointments -->
+        <!-- Today's Schedule -->
         <div class="col-xl-8 col-lg-7">
             <div class="card shadow mb-4">
                 <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
-                    <h6 class="m-0 font-weight-bold text-primary">Upcoming Appointments</h6>
-                    <a href="/calendar" class="btn btn-sm btn-primary">View Calendar</a>
+                    <h6 class="m-0 font-weight-bold text-primary">Today's Schedule</h6>
+                    <a href="/calendar/day/<?= date('Y-m-d') ?>" class="btn btn-sm btn-primary">
+                        View Full Day
+                    </a>
                 </div>
                 <div class="card-body">
-                    <?php if (empty($upcomingAppointments)): ?>
+                    <?php if (empty($todaysAppointments)): ?>
                         <div class="text-center py-4">
-                            <div class="mb-3">
-                                <i class="bi bi-calendar-x" style="font-size: 3rem; color: #d1d3e2;"></i>
-                            </div>
-                            <h4>No upcoming appointments</h4>
-                            <p class="text-muted">Schedule your first appointment to get started</p>
-                            <a href="/calendar/create" class="btn btn-primary">
-                                <i class="bi bi-plus"></i> New Appointment
+                            <i class="bi bi-calendar-x fs-1 text-gray-300"></i>
+                            <p class="mt-2 mb-0">No appointments scheduled for today.</p>
+                            <a href="/calendar/create" class="btn btn-sm btn-primary mt-3">
+                                <i class="bi bi-plus"></i> Schedule Appointment
                             </a>
                         </div>
                     <?php else: ?>
                         <div class="table-responsive">
-                            <table class="table table-bordered" width="100%" cellspacing="0">
+                            <table class="table table-hover">
                                 <thead>
                                     <tr>
-                                        <th>Date & Time</th>
+                                        <th>Time</th>
                                         <th>Client</th>
                                         <th>Service</th>
                                         <th>Status</th>
@@ -169,47 +133,37 @@ function formatDateForDisplay($dateString) {
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    <?php foreach ($upcomingAppointments as $appointment): ?>
-                                        <?php
-                                        $status = $appointment['status'];
-                                        $statusClass = '';
-                                        
-                                        switch ($status) {
-                                            case 'confirmed':
-                                                $statusClass = 'success';
-                                                $statusText = 'Confirmed';
-                                                break;
-                                            case 'pending':
-                                                $statusClass = 'warning';
-                                                $statusText = 'Pending';
-                                                break;
-                                            case 'cancelled':
-                                                $statusClass = 'danger';
-                                                $statusText = 'Cancelled';
-                                                break;
-                                            case 'completed':
-                                                $statusClass = 'primary';
-                                                $statusText = 'Completed';
-                                                break;
-                                            default:
-                                                $statusClass = 'secondary';
-                                                $statusText = ucfirst($status);
-                                        }
-                                        ?>
+                                    <?php foreach ($todaysAppointments as $appointment): ?>
                                         <tr>
-                                            <td><?= formatDateForDisplay($appointment['start_time']) ?></td>
-                                            <td><?= htmlspecialchars($appointment['client_name']) ?></td>
-                                            <td><?= htmlspecialchars($appointment['service_name']) ?></td>
-                                            <td><span class="badge bg-<?= $statusClass ?>"><?= $statusText ?></span></td>
                                             <td>
-                                                <div class="btn-group btn-group-sm">
-                                                    <a href="/calendar/edit/<?= $appointment['id'] ?>" class="btn btn-outline-primary">
-                                                        <i class="bi bi-pencil"></i>
-                                                    </a>
-                                                    <button type="button" class="btn btn-outline-danger" 
-                                                            onclick="confirmDelete(<?= $appointment['id'] ?>)">
-                                                        <i class="bi bi-trash"></i>
+                                                <?= date('g:i A', strtotime($appointment['start_time'])) ?> - 
+                                                <?= date('g:i A', strtotime($appointment['end_time'])) ?>
+                                            </td>
+                                            <td><?= htmlspecialchars($appointment['client_name']) ?></td>
+                                            <td>
+                                                <?php if (!empty($appointment['color'])): ?>
+                                                <span class="color-dot" style="background-color: <?= htmlspecialchars($appointment['color']) ?>"></span>
+                                                <?php endif; ?>
+                                                <?= htmlspecialchars($appointment['service_name']) ?>
+                                            </td>
+                                            <td>
+                                                <span class="badge bg-<?= getStatusBadgeClass($appointment['status']) ?>">
+                                                    <?= ucfirst($appointment['status']) ?>
+                                                </span>
+                                            </td>
+                                            <td>
+                                                <div class="dropdown">
+                                                    <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                                                        Actions
                                                     </button>
+                                                    <ul class="dropdown-menu">
+                                                        <li><a class="dropdown-item" href="/calendar/edit/<?= $appointment['id'] ?>"><i class="bi bi-pencil"></i> Edit</a></li>
+                                                        <li><hr class="dropdown-divider"></li>
+                                                        <li><a class="dropdown-item status-update <?= $appointment['status'] == 'pending' ? 'active' : '' ?>" href="#" data-id="<?= $appointment['id'] ?>" data-status="pending">Mark as Pending</a></li>
+                                                        <li><a class="dropdown-item status-update <?= $appointment['status'] == 'confirmed' ? 'active' : '' ?>" href="#" data-id="<?= $appointment['id'] ?>" data-status="confirmed">Mark as Confirmed</a></li>
+                                                        <li><a class="dropdown-item status-update <?= $appointment['status'] == 'completed' ? 'active' : '' ?>" href="#" data-id="<?= $appointment['id'] ?>" data-status="completed">Mark as Completed</a></li>
+                                                        <li><a class="dropdown-item status-update text-danger <?= $appointment['status'] == 'cancelled' ? 'active' : '' ?>" href="#" data-id="<?= $appointment['id'] ?>" data-status="cancelled">Cancel Appointment</a></li>
+                                                    </ul>
                                                 </div>
                                             </td>
                                         </tr>
@@ -220,323 +174,262 @@ function formatDateForDisplay($dateString) {
                     <?php endif; ?>
                 </div>
             </div>
-            
-            <!-- Weekly Distribution Chart -->
+        </div>
+
+        <!-- Status Chart -->
+        <div class="col-xl-4 col-lg-5">
             <div class="card shadow mb-4">
                 <div class="card-header py-3">
-                    <h6 class="m-0 font-weight-bold text-primary">Weekly Appointment Distribution</h6>
+                    <h6 class="m-0 font-weight-bold text-primary">Appointments by Status</h6>
+                </div>
+                <div class="card-body">
+                    <?php if (empty($statusStats['labels'])): ?>
+                        <div class="text-center py-5">
+                            <i class="bi bi-bar-chart fs-1 text-gray-300"></i>
+                            <p class="mt-2 mb-0">No appointment data available.</p>
+                        </div>
+                    <?php else: ?>
+                        <div class="chart-pie pt-4">
+                            <canvas id="statusPieChart"></canvas>
+                        </div>
+                        <div class="mt-4 text-center small">
+                            <?php foreach ($statusStats['labels'] as $i => $label): ?>
+                                <span class="me-2">
+                                    <i class="bi bi-circle-fill" style="color: <?= $statusStats['backgrounds'][$i] ?>"></i> <?= $label ?>
+                                </span>
+                            <?php endforeach; ?>
+                        </div>
+                    <?php endif; ?>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Content Row - Additional Info -->
+    <div class="row">
+        <!-- Weekly Distribution -->
+        <div class="col-xl-8 col-lg-7">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Appointment Distribution by Day of Week</h6>
                 </div>
                 <div class="card-body">
                     <div class="chart-bar">
-                        <canvas id="weeklyDistributionChart"></canvas>
+                        <canvas id="appointmentsByDayChart"></canvas>
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- Right Column: Mini Calendar & Activity -->
+        <!-- Recent Clients -->
         <div class="col-xl-4 col-lg-5">
-            <!-- Mini Calendar -->
             <div class="card shadow mb-4">
                 <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
-                    <h6 class="m-0 font-weight-bold text-primary">Calendar</h6>
+                    <h6 class="m-0 font-weight-bold text-primary">Recent Clients</h6>
+                    <a href="/clients" class="btn btn-sm btn-primary">View All</a>
                 </div>
                 <div class="card-body">
-                    <div class="mini-calendar">
-                        <div class="mini-calendar-header">
-                            <h5><?= $calendarData['month'] ?></h5>
+                    <?php if (empty($recentClients)): ?>
+                        <div class="text-center py-5">
+                            <i class="bi bi-people fs-1 text-gray-300"></i>
+                            <p class="mt-2 mb-0">No clients added yet.</p>
                         </div>
-                        <div class="mini-calendar-weekdays">
-                            <div>Su</div>
-                            <div>Mo</div>
-                            <div>Tu</div>
-                            <div>We</div>
-                            <div>Th</div>
-                            <div>Fr</div>
-                            <div>Sa</div>
+                    <?php else: ?>
+                        <div class="list-group">
+                            <?php foreach ($recentClients as $client): ?>
+                                <a href="/clients/view/<?= $client['id'] ?>" class="list-group-item list-group-item-action">
+                                    <div class="d-flex w-100 justify-content-between">
+                                        <h6 class="mb-1"><?= htmlspecialchars($client['name']) ?></h6>
+                                        <small><?= date('M j', strtotime($client['created_at'])) ?></small>
+                                    </div>
+                                    <?php if (!empty($client['email'])): ?>
+                                        <small class="text-muted"><i class="bi bi-envelope"></i> <?= htmlspecialchars($client['email']) ?></small>
+                                    <?php endif; ?>
+                                </a>
+                            <?php endforeach; ?>
                         </div>
-                        <div class="mini-calendar-days">
-                            <?php
-                            // Output empty cells for days before the first day of the month
-                            for ($i = 0; $i < $calendarData['firstDayOfWeek']; $i++) {
-                                echo '<div class="mini-day empty"></div>';
-                            }
-                            
-                            // Output days of the month
-                            for ($day = 1; $day <= $calendarData['numDays']; $day++) {
-                                $isToday = $day == date('j');
-                                echo '<a href="/calendar/day?date=' . date('Y-m-') . sprintf('%02d', $day) . '" class="mini-day ' . ($isToday ? 'today' : '') . '">' . $day . '</a>';
-                            }
-                            
-                            // Calculate remaining days to fill out the grid
-                            $totalCellsUsed = $calendarData['firstDayOfWeek'] + $calendarData['numDays'];
-                            $remainingCells = ceil($totalCellsUsed / 7) * 7 - $totalCellsUsed;
-                            
-                            // Output empty cells to complete the grid
-                            for ($i = 0; $i < $remainingCells; $i++) {
-                                echo '<div class="mini-day empty"></div>';
-                            }
-                            ?>
+                    <?php endif; ?>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Actions Row -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Quick Actions</h6>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-lg-3 col-md-6 mb-3">
+                            <a href="/calendar/create" class="btn btn-primary d-block py-3">
+                                <i class="bi bi-calendar-plus me-2"></i> New Appointment
+                            </a>
+                        </div>
+                        <div class="col-lg-3 col-md-6 mb-3">
+                            <a href="/clients/create" class="btn btn-success d-block py-3">
+                                <i class="bi bi-person-plus me-2"></i> New Client
+                            </a>
+                        </div>
+                        <div class="col-lg-3 col-md-6 mb-3">
+                            <a href="/services/create" class="btn btn-info d-block py-3">
+                                <i class="bi bi-tools me-2"></i> New Service
+                            </a>
+                        </div>
+                        <div class="col-lg-3 col-md-6 mb-3">
+                            <a href="/appointments" class="btn btn-secondary d-block py-3">
+                                <i class="bi bi-list-check me-2"></i> View All Appointments
+                            </a>
                         </div>
                     </div>
                     
-                    <div class="text-center mt-3">
-                        <a href="/calendar" class="btn btn-primary btn-sm">
-                            Go to Full Calendar <i class="bi bi-arrow-right"></i>
-                        </a>
-                    </div>
-                </div>
-            </div>
-            
-            <!-- Recent Activity Card -->
-            <div class="card shadow mb-4">
-                <div class="card-header py-3">
-                    <h6 class="m-0 font-weight-bold text-primary">Recent Activity</h6>
-                </div>
-                <div class="card-body">
-                    <div class="activity-feed">
-                        <?php if (empty($recentActivities)): ?>
-                            <div class="text-center py-3">
-                                <p class="text-muted">No recent activity</p>
-                            </div>
-                        <?php else: ?>
-                            <?php foreach ($recentActivities as $activity): ?>
-                                <div class="activity-item">
-                                    <div class="activity-icon">
-                                        <i class="bi bi-calendar-event"></i>
-                                    </div>
-                                    <div class="activity-content">
-                                        <div class="activity-title">
-                                            New appointment with <?= htmlspecialchars($activity['client_name']) ?>
-                                        </div>
-                                        <div class="activity-subtitle">
-                                            <?= htmlspecialchars($activity['service_name']) ?> • <?= date('M j, g:i A', strtotime($activity['start_time'])) ?>
-                                        </div>
-                                        <div class="activity-time text-muted">
-                                            <?= date('M j, Y', strtotime($activity['created_at'])) ?>
-                                        </div>
-                                    </div>
-                                </div>
-                            <?php endforeach; ?>
-                        <?php endif; ?>
+                    <div class="row mt-3">
+                        <div class="col-lg-6">
+                            <h6 class="font-weight-bold">Jump to Date</h6>
+                            <form action="/calendar/day" method="get" class="input-group">
+                                <input type="date" class="form-control" name="date" value="<?= date('Y-m-d') ?>">
+                                <button class="btn btn-outline-primary" type="submit">View Day</button>
+                            </form>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
     </div>
-</div>
 
-<!-- Delete Appointment Modal -->
-<div class="modal fade" id="deleteModal" tabindex="-1" role="dialog" aria-hidden="true">
-    <div class="modal-dialog" role="document">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">Confirm Delete</h5>
-                <button class="close" type="button" data-bs-dismiss="modal" aria-label="Close">
-                    <span aria-hidden="true">×</span>
-                </button>
-            </div>
-            <div class="modal-body">
-                Are you sure you want to delete this appointment? This action cannot be undone.
-            </div>
-            <div class="modal-footer">
-                <button class="btn btn-secondary" type="button" data-bs-dismiss="modal">Cancel</button>
-                <a class="btn btn-danger" id="deleteButton" href="#">Delete Appointment</a>
-            </div>
-        </div>
-    </div>
 </div>
-
-<!-- Chart.js -->
-<script src="https://cdn.jsdelivr.net/npm/chart.js@3.7.1/dist/chart.min.js"></script>
 
 <style>
-/* Mini Calendar Styles */
-.mini-calendar {
-    width: 100%;
-}
-
-.mini-calendar-header {
-    text-align: center;
-    margin-bottom: 10px;
-}
-
-.mini-calendar-weekdays {
-    display: grid;
-    grid-template-columns: repeat(7, 1fr);
-    text-align: center;
-    font-weight: bold;
-    font-size: 0.8rem;
-    color: #4e73df;
-    margin-bottom: 5px;
-}
-
-.mini-calendar-days {
-    display: grid;
-    grid-template-columns: repeat(7, 1fr);
-    grid-auto-rows: minmax(30px, auto);
-    gap: 2px;
-}
-
-.mini-day {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    font-size: 0.8rem;
-    padding: 5px;
-    border-radius: 50%;
-    text-decoration: none;
-    color: #5a5c69;
-}
-
-.mini-day.empty {
-    color: transparent;
-    pointer-events: none;
-}
-
-.mini-day.today {
-    background-color: #4e73df;
-    color: white;
-    font-weight: bold;
-}
-
-.mini-day:not(.empty):not(.today):hover {
-    background-color: #eaecf4;
-}
-
-/* Activity Feed Styles */
-.activity-feed {
-    display: flex;
-    flex-direction: column;
-    gap: 15px;
-}
-
-.activity-item {
-    display: flex;
-    gap: 10px;
-    padding-bottom: 15px;
-    border-bottom: 1px solid #e3e6f0;
-}
-
-.activity-item:last-child {
-    border-bottom: none;
-    padding-bottom: 0;
-}
-
-.activity-icon {
-    width: 36px;
-    height: 36px;
-    background-color: #e8f0fe;
-    color: #4e73df;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    border-radius: 50%;
-}
-
-.activity-content {
-    flex: 1;
-}
-
-.activity-title {
-    font-weight: 600;
-    margin-bottom: 2px;
-}
-
-.activity-subtitle {
-    font-size: 0.85rem;
-    margin-bottom: 2px;
-}
-
-.activity-time {
-    font-size: 0.75rem;
-}
-
-/* Badge style fixes */
-.badge {
+.color-dot {
     display: inline-block;
-    padding: 0.25em 0.4em;
-    font-size: 75%;
-    font-weight: 700;
-    line-height: 1;
-    text-align: center;
-    white-space: nowrap;
-    vertical-align: baseline;
-    border-radius: 0.25rem;
-    color: white;
-}
-
-.bg-success {
-    background-color: #28a745 !important;
-}
-
-.bg-warning {
-    background-color: #ffc107 !important;
-    color: #212529;
-}
-
-.bg-danger {
-    background-color: #dc3545 !important;
-}
-
-.bg-primary {
-    background-color: #4e73df !important;
-}
-
-.bg-secondary {
-    background-color: #858796 !important;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    margin-right: 5px;
 }
 </style>
 
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
-// Set up chart
+// Set new default font family for Chart.js
+Chart.defaults.font.family = 'system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif';
+Chart.defaults.color = '#858796';
+
 document.addEventListener('DOMContentLoaded', function() {
-    // Chart data from PHP
-    const chartLabels = <?= json_encode($appointmentsByDay['labels']) ?>;
-    const chartData = <?= json_encode($appointmentsByDay['data']) ?>;
+    // Pie Chart for Status Distribution
+    const statusChartEl = document.getElementById('statusPieChart');
+    if (statusChartEl) {
+        new Chart(statusChartEl, {
+            type: 'doughnut',
+            data: {
+                labels: <?= json_encode($statusStats['labels'] ?? []) ?>,
+                datasets: [{
+                    data: <?= json_encode($statusStats['data'] ?? []) ?>,
+                    backgroundColor: <?= json_encode($statusStats['backgrounds'] ?? []) ?>,
+                    hoverBackgroundColor: <?= json_encode($statusStats['backgrounds'] ?? []) ?>,
+                    hoverBorderColor: "rgba(234, 236, 244, 1)",
+                }],
+            },
+            options: {
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: false
+                    },
+                    tooltip: {
+                        backgroundColor: "rgb(255,255,255)",
+                        bodyColor: "#858796",
+                        borderColor: '#dddfeb',
+                        borderWidth: 1,
+                        caretPadding: 10,
+                        displayColors: false,
+                        titleMarginBottom: 10,
+                        titleColor: '#6e707e',
+                        titleFontSize: 14,
+                    }
+                },
+                cutout: '60%',
+            },
+        });
+    }
     
-    const ctx = document.getElementById('weeklyDistributionChart').getContext('2d');
-    const myChart = new Chart(ctx, {
-        type: 'bar',
-        data: {
-            labels: chartLabels,
-            datasets: [{
-                label: 'Appointments',
-                data: chartData,
-                backgroundColor: 'rgba(78, 115, 223, 0.5)',
-                borderColor: 'rgba(78, 115, 223, 1)',
-                borderWidth: 1
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            scales: {
-                y: {
-                    beginAtZero: true,
-                    ticks: {
-                        stepSize: 1
+    // Bar Chart for Weekly Distribution
+    const dayChartEl = document.getElementById('appointmentsByDayChart');
+    if (dayChartEl) {
+        new Chart(dayChartEl, {
+            type: 'bar',
+            data: {
+                labels: <?= json_encode($appointmentsByDay['labels'] ?? []) ?>,
+                datasets: [{
+                    label: "Appointments",
+                    backgroundColor: "#4e73df",
+                    hoverBackgroundColor: "#2e59d9",
+                    borderColor: "#4e73df",
+                    data: <?= json_encode($appointmentsByDay['data'] ?? []) ?>,
+                }],
+            },
+            options: {
+                maintainAspectRatio: false,
+                layout: {
+                    padding: {
+                        left: 10,
+                        right: 25,
+                        top: 25,
+                        bottom: 0
+                    }
+                },
+                scales: {
+                    x: {
+                        grid: {
+                            display: false,
+                            drawBorder: false
+                        },
+                        ticks: {
+                            maxTicksLimit: 7
+                        }
+                    },
+                    y: {
+                        ticks: {
+                            min: 0,
+                            maxTicksLimit: 5,
+                            padding: 10,
+                        },
+                        grid: {
+                            color: "rgb(234, 236, 244)",
+                            zeroLineColor: "rgb(234, 236, 244)",
+                            drawBorder: false,
+                            borderDash: [2],
+                            zeroLineBorderDash: [2]
+                        }
+                    },
+                },
+                plugins: {
+                    legend: {
+                        display: false
+                    },
+                    tooltip: {
+                        titleMarginBottom: 10,
+                        titleColor: '#6e707e',
+                        titleFontSize: 14,
+                        backgroundColor: "rgb(255,255,255)",
+                        bodyColor: "#858796",
+                        borderColor: '#dddfeb',
+                        borderWidth: 1,
+                        padding: 15,
+                        displayColors: false,
+                        caretPadding: 10,
                     }
                 }
-            },
-            plugins: {
-                legend: {
-                    display: false
-                }
             }
-        }
-    });
+        });
+    }
 });
-
-// Delete confirmation
-function confirmDelete(appointmentId) {
-    const modal = new bootstrap.Modal(document.getElementById('deleteModal'));
-    document.getElementById('deleteButton').href = '/calendar/delete/' + appointmentId;
-    modal.show();
-}
 </script>
 
-<?php
-// Include footer
-include __DIR__ . '/../layouts/footer.php';
-?>
+<!-- Status update script (if needed) -->
+<script src="/js/calendar.js"></script>
+
+<?php include __DIR__ . '/../layouts/footer.php'; ?>

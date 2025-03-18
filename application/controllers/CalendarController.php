@@ -103,8 +103,8 @@ class CalendarController extends BaseController {
         include __DIR__ . '/../views/calendar/index.php';
     }
     
-    // Calendar Day View
-    public function day() {
+    // Calendar Day View - Updated to support both URL formats
+    public function day($dateParam = null) {
         $this->startSession();
         
         if (!isset($_SESSION['user'])) {
@@ -114,13 +114,23 @@ class CalendarController extends BaseController {
         
         $userId = $_SESSION['user']['id'];
         
-        // Get date or use today
-        $day = isset($_GET['day']) ? (int) $_GET['day'] : (int) date('j');
-        $month = isset($_GET['month']) ? (int) $_GET['month'] : (int) date('n');
-        $year = isset($_GET['year']) ? (int) $_GET['year'] : (int) date('Y');
+        // Check if we received a date in YYYY-MM-DD format as a direct parameter
+        if ($dateParam && preg_match('/^\d{4}-\d{2}-\d{2}$/', $dateParam)) {
+            error_log("CalendarController::day - Using direct date parameter: $dateParam");
+            $year = (int)substr($dateParam, 0, 4);
+            $month = (int)substr($dateParam, 5, 2);
+            $day = (int)substr($dateParam, 8, 2);
+        } else {
+            // Otherwise, use query parameters or defaults
+            error_log("CalendarController::day - Using query parameters");
+            $day = isset($_GET['day']) ? (int) $_GET['day'] : (int) date('j');
+            $month = isset($_GET['month']) ? (int) $_GET['month'] : (int) date('n');
+            $year = isset($_GET['year']) ? (int) $_GET['year'] : (int) date('Y');
+        }
         
         // Validate date
         if (!checkdate($month, $day, $year)) {
+            error_log("Invalid date: $year-$month-$day - Using current date instead");
             $day = (int) date('j');
             $month = (int) date('n');
             $year = (int) date('Y');
@@ -134,6 +144,10 @@ class CalendarController extends BaseController {
         // Get previous and next day
         $prevDate = strtotime('-1 day', $date);
         $nextDate = strtotime('+1 day', $date);
+        
+        // Create URLs for previous and next day using the new format
+        $prevDateFormatted = date('Y-m-d', $prevDate);
+        $nextDateFormatted = date('Y-m-d', $nextDate);
         
         try {
             // Get day's appointments
@@ -202,6 +216,8 @@ class CalendarController extends BaseController {
             'nextDay' => date('j', $nextDate),
             'nextMonth' => date('n', $nextDate),
             'nextYear' => date('Y', $nextDate),
+            'prevDateFormatted' => $prevDateFormatted,  // Added for new URL format
+            'nextDateFormatted' => $nextDateFormatted,  // Added for new URL format
             'appointments' => $appointments,
             'timeSlots' => $timeSlots,
             'clients' => $clients,
@@ -265,7 +281,6 @@ public function updateStatus() {
     
     // Get input data
     $input = json_decode(file_get_contents('php://input'), true);
-    error_log("Status update input: " . print_r($input, true));
     
     $id = $input['id'] ?? null;
     $status = $input['status'] ?? null;
@@ -289,17 +304,9 @@ public function updateStatus() {
         $result = $stmt->execute([$status, $id, $userId]);
         
         if ($result && $stmt->rowCount() > 0) {
-            echo json_encode([
-                'success' => true, 
-                'message' => 'Appointment status updated to ' . $status
-            ]);
-            error_log("Appointment $id status updated to $status");
+            echo json_encode(['success' => true, 'message' => 'Appointment status updated']);
         } else {
-            echo json_encode([
-                'success' => false, 
-                'message' => 'Appointment not found or no changes made'
-            ]);
-            error_log("Failed to update appointment $id status - not found or no changes");
+            echo json_encode(['success' => false, 'message' => 'Appointment not found or no changes made']);
         }
         
     } catch (PDOException $e) {
@@ -404,12 +411,9 @@ public function updateStatus() {
             
             $_SESSION['success'] = 'Appointment created successfully';
             
-            // Extract day, month, year from the appointment date for redirect
-            $day = date('j', strtotime($date));
-            $month = date('n', strtotime($date));
-            $year = date('Y', strtotime($date));
-            
-            header("Location: /calendar/day?day=$day&month=$month&year=$year");
+            // Get formatted date for new URL format redirect
+            $formattedDate = date('Y-m-d', strtotime($date));
+            header("Location: /calendar/day/{$formattedDate}");
             exit;
             
         } catch (PDOException $e) {
@@ -609,12 +613,9 @@ public function updateStatus() {
             
             $_SESSION['success'] = 'Appointment updated successfully';
             
-            // Extract day, month, year from the appointment date for redirect
-            $day = date('j', strtotime($date));
-            $month = date('n', strtotime($date));
-            $year = date('Y', strtotime($date));
-            
-            header("Location: /calendar/day?day=$day&month=$month&year=$year");
+            // Format date for new URL format
+            $formattedDate = date('Y-m-d', strtotime($date));
+            header("Location: /calendar/day/{$formattedDate}");
             exit;
             
         } catch (PDOException $e) {
@@ -639,11 +640,12 @@ public function updateStatus() {
         
         try {
             // First check if appointment exists and belongs to user
-            $checkQuery = "SELECT id FROM appointments WHERE id = ? AND user_id = ?";
+            $checkQuery = "SELECT id, start_time FROM appointments WHERE id = ? AND user_id = ?";
             $checkStmt = $this->db->prepare($checkQuery);
             $checkStmt->execute([$id, $userId]);
+            $appointment = $checkStmt->fetch();
             
-            if (!$checkStmt->fetch()) {
+            if (!$appointment) {
                 $_SESSION['error'] = 'Appointment not found';
                 header('Location: /calendar');
                 exit;
@@ -656,8 +658,11 @@ public function updateStatus() {
             
             $_SESSION['success'] = 'Appointment deleted successfully';
             
-            // Determine where to redirect based on referrer
-            $referrer = $_POST['referrer'] ?? '/calendar';
+            // Get formatted date for redirection
+            $appointmentDate = date('Y-m-d', strtotime($appointment['start_time']));
+            
+            // Determine where to redirect based on referrer or date
+            $referrer = $_POST['referrer'] ?? "/calendar/day/{$appointmentDate}";
             header("Location: $referrer");
             exit;
             

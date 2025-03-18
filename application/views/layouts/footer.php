@@ -49,5 +49,6 @@
 
     <!-- Custom scripts for all pages-->
     <script src="/js/app.js"></script>
+    <script src="/js/theme.js"></script>
 </body>
 </html>

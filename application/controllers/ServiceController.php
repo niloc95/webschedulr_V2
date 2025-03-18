@@ -337,6 +337,64 @@ public function ajaxCreate() {
         echo json_encode(['success' => false, 'message' => 'Database error occurred: ' . $e->getMessage()]);
     }
 }
+
+// Add this method to your ServiceController class
+
+public function quickAdd() {
+    $this->startSession();
+    
+    // Check if user is logged in and request is AJAX
+    if (!isset($_SESSION['user'])) {
+        http_response_code(401);
+        echo json_encode(['error' => 'Unauthorized']);
+        exit;
+    }
+    
+    $userId = $_SESSION['user']['id'];
+    
+    // Validate input
+    if (!isset($_POST['name']) || empty($_POST['name'])) {
+        echo json_encode(['success' => false, 'error' => 'Service name is required']);
+        exit;
+    }
+    
+    if (!isset($_POST['duration']) || !is_numeric($_POST['duration']) || $_POST['duration'] < 5) {
+        echo json_encode(['success' => false, 'error' => 'Valid duration is required']);
+        exit;
+    }
+    
+    try {
+        $stmt = $this->db->prepare("
+            INSERT INTO services (user_id, name, duration, price, color, created_at)
+            VALUES (?, ?, ?, ?, ?, NOW())
+        ");
+        
+        $stmt->execute([
+            $userId,
+            $_POST['name'],
+            $_POST['duration'],
+            $_POST['price'] ?? null,
+            $_POST['color'] ?? '#4e73df'
+        ]);
+        
+        $serviceId = $this->db->lastInsertId();
+        
+        // Return success with new service data
+        echo json_encode([
+            'success' => true,
+            'service' => [
+                'id' => $serviceId,
+                'name' => $_POST['name'],
+                'duration' => $_POST['duration'],
+                'price' => $_POST['price'] ?? null,
+                'color' => $_POST['color'] ?? '#4e73df'
+            ]
+        ]);
+        
+    } catch (PDOException $e) {
+        echo json_encode(['success' => false, 'error' => 'Database error: ' . $e->getMessage()]);
+    }
+}
     
     // Update service method
     

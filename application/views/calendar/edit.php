@@ -33,10 +33,33 @@ function safeHtmlSpecialChars($str) {
 }
 ?>
 
+<nav aria-label="breadcrumb" class="mb-4">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="/dashboard">Dashboard</a></li>
+        <li class="breadcrumb-item"><a href="/calendar/day/<?= date('Y-m-d', strtotime($appointment['start_time'])) ?>">Calendar</a></li>
+        <li class="breadcrumb-item active">Edit Appointment</li>
+    </ol>
+</nav>
+
+<div class="action-bar fixed-bottom bg-white border-top p-2 d-md-none">
+    <div class="container-fluid">
+        <div class="row">
+            <div class="col-6">
+                <a href="/calendar/day/<?= date('Y-m-d', strtotime($appointment['start_time'])) ?>" class="btn btn-secondary w-100">
+                    Back
+                </a>
+            </div>
+            <div class="col-6">
+                <button type="submit" form="appointmentForm" class="btn btn-primary w-100">Save</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <div class="container-fluid">
     <div class="d-sm-flex align-items-center justify-content-between mb-4">
         <h1 class="h3 mb-0 text-gray-800">Edit Appointment</h1>
-        <a href="/calendar/day?day=<?= date('j', strtotime($appointment['start_time'])) ?>&month=<?= date('n', strtotime($appointment['start_time'])) ?>&year=<?= date('Y', strtotime($appointment['start_time'])) ?>" class="btn btn-sm btn-secondary shadow-sm">
+        <a href="/calendar/day/<?= date('Y-m-d', strtotime($appointment['start_time'])) ?>" class="btn btn-sm btn-secondary shadow-sm">
             <i class="bi bi-arrow-left"></i> Back to Day View
         </a>
     </div>
@@ -52,7 +75,7 @@ function safeHtmlSpecialChars($str) {
             <h6 class="m-0 font-weight-bold text-primary">Appointment Details</h6>
         </div>
         <div class="card-body">
-            <form action="/calendar/update/<?= $appointment['id'] ?>" method="post">
+            <form id="appointmentForm" action="/calendar/update/<?= $appointment['id'] ?>" method="post">
                 <div class="row mb-3">
                     <div class="col-md-6">
                         <label for="client_id" class="form-label">Client *</label>
@@ -117,14 +140,30 @@ function safeHtmlSpecialChars($str) {
                 
                 <div class="row mb-3">
                     <div class="col-md-6">
-                        <label for="status" class="form-label">Status</label>
-                        <select class="form-control <?= hasError('status') ?>" id="status" name="status">
-                            <option value="pending" <?= ($appointment['status'] == 'pending') ? 'selected' : '' ?>>Pending</option>
-                            <option value="confirmed" <?= ($appointment['status'] == 'confirmed') ? 'selected' : '' ?>>Confirmed</option>
-                            <option value="completed" <?= ($appointment['status'] == 'completed') ? 'selected' : '' ?>>Completed</option>
-                            <option value="cancelled" <?= ($appointment['status'] == 'cancelled') ? 'selected' : '' ?>>Cancelled</option>
-                        </select>
-                        <?= getError('status') ?>
+                        <label class="form-label">Status</label>
+                        <div>
+                            <input type="hidden" name="status" id="status_value" value="<?= $appointment['status'] ?>">
+                            <div class="btn-group" role="group" aria-label="Appointment status">
+                                <button type="button" class="btn <?= ($appointment['status'] == 'confirmed') ? 'btn-primary' : 'btn-outline-primary' ?> status-btn" 
+                                        data-value="confirmed" onclick="setStatus('confirmed')">
+                                    <i class="bi bi-check-circle"></i> Confirmed
+                                </button>
+                                <button type="button" class="btn <?= ($appointment['status'] == 'completed') ? 'btn-success' : 'btn-outline-success' ?> status-btn" 
+                                        data-value="completed" onclick="setStatus('completed')">
+                                    <i class="bi bi-check-square"></i> Completed
+                                </button>
+                                <button type="button" class="btn <?= ($appointment['status'] == 'cancelled') ? 'btn-danger' : 'btn-outline-danger' ?> status-btn" 
+                                        data-value="cancelled" onclick="setStatus('cancelled')">
+                                    <i class="bi bi-x-circle"></i> Cancelled
+                                </button>
+                            </div>
+                            <?php if ($appointment['status'] == 'pending'): ?>
+                                <div class="text-muted small mt-2">
+                                    <i class="bi bi-info-circle"></i> This appointment is currently in "pending" status. 
+                                    Select a new status above.
+                                </div>
+                            <?php endif; ?>
+                        </div>
                     </div>
                 </div>
                 
@@ -232,8 +271,8 @@ function safeHtmlSpecialChars($str) {
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                <form action="/calendar/delete/<?= $appointment['id'] ?>" method="post">
-                    <input type="hidden" name="referrer" value="/calendar/day?day=<?= date('j', strtotime($appointment['start_time'])) ?>&month=<?= date('n', strtotime($appointment['start_time'])) ?>&year=<?= date('Y', strtotime($appointment['start_time'])) ?>">
+                <form id="deleteForm" action="/calendar/delete/<?= $appointment['id'] ?>" method="post">
+                    <input type="hidden" name="referrer" value="/calendar/day/<?= date('Y-m-d', strtotime($appointment['start_time'])) ?>">
                     <button type="submit" class="btn btn-danger">Delete Appointment</button>
                 </form>
             </div>
@@ -251,6 +290,35 @@ document.addEventListener('DOMContentLoaded', function() {
             document.getElementById('duration').value = duration;
         }
     });
+
+    // Add submit event handler to show saving indicator
+    document.getElementById('appointmentForm').addEventListener('submit', function() {
+        // Find the submit button in the form
+        const submitBtn = this.querySelector('button[type="submit"]');
+        if (submitBtn) {
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Saving...';
+        }
+        
+        // Also update the mobile submit button if it exists
+        const mobileSubmitBtn = document.querySelector('.action-bar button[type="submit"]');
+        if (mobileSubmitBtn) {
+            mobileSubmitBtn.disabled = true;
+            mobileSubmitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Saving...';
+        }
+    });
+
+    // Add delete form handler for visual feedback
+    const deleteForm = document.getElementById('deleteForm');
+    if (deleteForm) {
+        deleteForm.addEventListener('submit', function() {
+            const deleteBtn = this.querySelector('button[type="submit"]');
+            if (deleteBtn) {
+                deleteBtn.disabled = true;
+                deleteBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Deleting...';
+            }
+        });
+    }
 
     // Handle new client form submission
     document.getElementById('saveClientBtn').addEventListener('click', function() {
@@ -313,7 +381,31 @@ document.addEventListener('DOMContentLoaded', function() {
             console.error('Error:', error);
         });
     });
+
+    // Initialize status buttons based on current value
+    const currentStatus = document.getElementById('status_value').value;
+    if (currentStatus) {
+        setStatus(currentStatus);
+    }
 });
+
+function setStatus(status) {
+    // Update the hidden input
+    document.getElementById('status_value').value = status;
+    
+    // Update button styles
+    document.querySelectorAll('.status-btn').forEach(btn => {
+        const btnValue = btn.getAttribute('data-value');
+        
+        if (btnValue === 'confirmed') {
+            btn.className = (status === 'confirmed') ? 'btn btn-primary status-btn' : 'btn btn-outline-primary status-btn';
+        } else if (btnValue === 'completed') {
+            btn.className = (status === 'completed') ? 'btn btn-success status-btn' : 'btn btn-outline-success status-btn';
+        } else if (btnValue === 'cancelled') {
+            btn.className = (status === 'cancelled') ? 'btn btn-danger status-btn' : 'btn btn-outline-danger status-btn';
+        }
+    });
+}
 </script>
 <script src="/js/appointment-form.js"></script>
 

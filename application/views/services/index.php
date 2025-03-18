@@ -172,6 +172,16 @@ function getFlashMessage($type) {
                             </button>
                         <?php endif; ?>
                     </div>
+                    <div class="col-md-3">
+                        <select name="sort" class="form-select bg-light border-0 small">
+                            <option value="name-asc" <?= (isset($_GET['sort']) && $_GET['sort'] == 'name-asc') ? 'selected' : '' ?>>Name (A-Z)</option>
+                            <option value="name-desc" <?= (isset($_GET['sort']) && $_GET['sort'] == 'name-desc') ? 'selected' : '' ?>>Name (Z-A)</option>
+                            <option value="price-asc" <?= (isset($_GET['sort']) && $_GET['sort'] == 'price-asc') ? 'selected' : '' ?>>Price (Low to High)</option>
+                            <option value="price-desc" <?= (isset($_GET['sort']) && $_GET['sort'] == 'price-desc') ? 'selected' : '' ?>>Price (High to Low)</option>
+                            <option value="duration-asc" <?= (isset($_GET['sort']) && $_GET['sort'] == 'duration-asc') ? 'selected' : '' ?>>Duration (Shortest)</option>
+                            <option value="duration-desc" <?= (isset($_GET['sort']) && $_GET['sort'] == 'duration-desc') ? 'selected' : '' ?>>Duration (Longest)</option>
+                        </select>
+                    </div>
                 </div>
             </form>
 
@@ -201,6 +211,7 @@ function getFlashMessage($type) {
                                 <th>Category</th>
                                 <th>Duration</th>
                                 <th>Price</th>
+                                <th>Appointments</th>
                                 <th>Actions</th>
                             </tr>
                         </thead>
@@ -225,6 +236,7 @@ function getFlashMessage($type) {
                                             —
                                         <?php endif; ?>
                                     </td>
+                                    <td><?= $service['appointment_count'] ?? 0 ?></td>
                                     <td>
                                         <div class="btn-group btn-group-sm">
                                         <a href="/services/edit/<?= $service['id'] ?>" class="btn btn-outline-secondary" title="Edit Service">
@@ -261,6 +273,12 @@ function getFlashMessage($type) {
                 <p>Are you sure you want to delete this service?</p>
                 <p class="font-weight-bold text-danger" id="deleteServiceName"></p>
                 <p><strong>Note:</strong> Services with associated appointments cannot be deleted.</p>
+                <?php if (isset($service['appointment_count']) && $service['appointment_count'] > 0): ?>
+                    <p class="text-warning">
+                        <i class="bi bi-exclamation-triangle"></i>
+                        This service has <?= $service['appointment_count'] ?> appointment(s). Deleting it will affect those appointments.
+                    </p>
+                <?php endif; ?>
             </div>
             <div class="modal-footer">
                 <button class="btn btn-secondary" type="button" data-bs-dismiss="modal">Cancel</button>

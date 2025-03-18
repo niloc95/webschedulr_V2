@@ -1,45 +1,20 @@
 <?php
 /* WebSchedulr Client Controller */
+require_once __DIR__ . '/BaseController.php';
 
-class ClientController {
-    private $db;
+class ClientController extends BaseController {
     
     public function __construct() {
-        // Load config file with DB credentials
-        require_once __DIR__ . '/../../config.php';
+        // Call parent constructor to set up database connection
+        parent::__construct();
         
-        try {
-            $this->db = new PDO(
-                "mysql:host=" . Config::DB_HOST . ";dbname=" . Config::DB_NAME . ";charset=utf8mb4",
-                Config::DB_USERNAME,
-                Config::DB_PASSWORD,
-                [
-                    PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
-                    PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
-                    PDO::ATTR_EMULATE_PREPARES => false
-                ]
-            );
-        } catch (PDOException $e) {
-            if (Config::DEBUG_MODE) {
-                die("Database connection failed: " . $e->getMessage());
-            } else {
-                die("A system error has occurred. Please try again later.");
-            }
-        }
+        // Any ClientController specific initialization can go here
     }
     
-    // Helper to safely start session
-    private function startSession() {
-        if (session_status() === PHP_SESSION_NONE) {
-            session_start();
-        }
-    }
-
     // List clients with optional search/filter - FIXED VERSION
     public function index() {
         $this->startSession();
         
-        // Check if user is logged in
         if (!isset($_SESSION['user'])) {
             header('Location: /login');
             exit;
@@ -104,8 +79,8 @@ class ClientController {
                 'prevPage' => $page - 1,
                 'total_records' => $total
             ];
-    
-            // Get client statistics
+            
+            // Get client statistics - THIS LINE WAS MISSING
             $stats = $this->getClientStatistics($userId);
             
         } catch (PDOException $e) {
@@ -129,6 +104,7 @@ class ClientController {
             ];
         }
         
+        // Include the view
         include __DIR__ . '/../views/clients/index.php';
     }
     
@@ -144,6 +120,58 @@ class ClientController {
         
         include __DIR__ . '/../views/clients/create.php';
     }
+
+
+// Add this method to your ClientController class
+
+public function quickAdd() {
+    $this->startSession();
+    
+    // Check if user is logged in and request is AJAX
+    if (!isset($_SESSION['user'])) {
+        http_response_code(401);
+        echo json_encode(['error' => 'Unauthorized']);
+        exit;
+    }
+    
+    $userId = $_SESSION['user']['id'];
+    
+    // Validate input
+    if (!isset($_POST['name']) || empty($_POST['name'])) {
+        echo json_encode(['success' => false, 'error' => 'Client name is required']);
+        exit;
+    }
+    
+    try {
+        $stmt = $this->db->prepare("
+            INSERT INTO clients (user_id, name, email, phone, created_at)
+            VALUES (?, ?, ?, ?, NOW())
+        ");
+        
+        $stmt->execute([
+            $userId,
+            $_POST['name'],
+            $_POST['email'] ?? null,
+            $_POST['phone'] ?? null
+        ]);
+        
+        $clientId = $this->db->lastInsertId();
+        
+        // Return success with new client data
+        echo json_encode([
+            'success' => true,
+            'client' => [
+                'id' => $clientId,
+                'name' => $_POST['name'],
+                'email' => $_POST['email'] ?? null,
+                'phone' => $_POST['phone'] ?? null
+            ]
+        ]);
+        
+    } catch (PDOException $e) {
+        echo json_encode(['success' => false, 'error' => 'Database error: ' . $e->getMessage()]);
+    }
+}
 
     /**
  * Create a client via AJAX and return JSON response
@@ -569,5 +597,120 @@ public function ajaxCreate() {
                 'active' => 0
             ];
         }
+    }
+
+    public function profile($id) {
+        $this->startSession();
+        
+        if (!isset($_SESSION['user'])) {
+            header('Location: /login');
+            exit;
+        }
+        
+        $userId = $_SESSION['user']['id'];
+        
+        try {
+            // Get client details
+            $stmt = $this->db->prepare("
+                SELECT * FROM clients 
+                WHERE id = ? AND user_id = ?
+            ");
+            $stmt->execute([$id, $userId]);
+            $client = $stmt->fetch();
+            
+            if (!$client) {
+                $_SESSION['error'] = 'Client not found';
+                header('Location: /clients');
+                exit;
+            }
+            
+            // Get client's appointments with service details
+            $appointmentsQuery = "
+                SELECT a.*, s.name as service_name, s.color
+                FROM appointments a
+                JOIN services s ON a.service_id = s.id
+                WHERE a.client_id = ? AND a.user_id = ?
+                ORDER BY a.start_time DESC
+            ";
+            $appointmentsStmt = $this->db->prepare($appointmentsQuery);
+            $appointmentsStmt->execute([$id, $userId]);
+            $appointments = $appointmentsStmt->fetchAll();
+            
+            // Get client metrics
+            $metricsQuery = "
+                SELECT 
+                    COUNT(*) as total_appointments,
+                    SUM(s.price) as total_spent,
+                    MIN(a.start_time) as first_visit,
+                    MAX(a.start_time) as last_visit
+                FROM appointments a
+                JOIN services s ON a.service_id = s.id
+                WHERE a.client_id = ? AND a.user_id = ?
+            ";
+            $metricsStmt = $this->db->prepare($metricsQuery);
+            $metricsStmt->execute([$id, $userId]);
+            $metrics = $metricsStmt->fetch();
+            
+            include __DIR__ . '/../views/clients/profile.php';
+            
+        } catch (PDOException $e) {
+            error_log("Error in client profile: " . $e->getMessage());
+            $_SESSION['error'] = 'Database error occurred';
+            header('Location: /clients');
+            exit;
+        }
+    }
+
+    // Simple direct query function for debugging
+    public function debug() {
+        $this->startSession();
+        
+        if (!isset($_SESSION['user'])) {
+            header('Location: /login');
+            exit;
+        }
+        
+        $userId = $_SESSION['user']['id'];
+        
+        try {
+            // Direct, simple query
+            $stmt = $this->db->prepare("SELECT * FROM clients WHERE user_id = ?");
+            $stmt->execute([$userId]);
+            $clients = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            
+            echo "<h2>Debug Client List</h2>";
+            
+            if (count($clients) === 0) {
+                echo "<p>No clients found. Adding sample client...</p>";
+                
+                // Add a sample client
+                $this->db->prepare("
+                    INSERT INTO clients (user_id, name, email, phone, created_at) 
+                    VALUES (?, 'Debug Client', 'debug@example.com', '555-1234', NOW())
+                ")->execute([$userId]);
+                
+                echo "<p>Sample client added. <a href='/clients/debug'>Refresh</a></p>";
+            } else {
+                echo "<table border='1'>
+                    <tr><th>ID</th><th>Name</th><th>Email</th><th>Phone</th></tr>";
+                
+                foreach ($clients as $client) {
+                    echo "<tr>
+                        <td>{$client['id']}</td>
+                        <td>{$client['name']}</td>
+                        <td>{$client['email']}</td>
+                        <td>{$client['phone']}</td>
+                    </tr>";
+                }
+                
+                echo "</table>";
+            }
+            
+        } catch (PDOException $e) {
+            echo "<h2>Database Error</h2>";
+            echo "<p>Error: " . $e->getMessage() . "</p>";
+        }
+        
+        exit;
     }
 }

@@ -42,6 +42,36 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 });
 
+document.addEventListener('DOMContentLoaded', function() {
+    // Status update handling from previous implementation
+    
+    // Initialize tooltips for appointment details
+    const appointmentElements = document.querySelectorAll('.appointment');
+    
+    if (appointmentElements.length > 0) {
+        appointmentElements.forEach(appointment => {
+            // Use Bootstrap tooltips (if Bootstrap 5 is used)
+            if (typeof bootstrap !== 'undefined') {
+                const tooltip = new bootstrap.Tooltip(appointment, {
+                    html: true,
+                    title: appointment.getAttribute('data-tooltip-content') || 'No details available',
+                    placement: 'auto',
+                    boundary: 'window'
+                });
+            }
+            
+            // Add hover effect
+            appointment.addEventListener('mouseenter', function() {
+                this.classList.add('appointment-hover');
+            });
+            
+            appointment.addEventListener('mouseleave', function() {
+                this.classList.remove('appointment-hover');
+            });
+        });
+    }
+});
+
 /**
  * Calendar functionality for WebSchedulr
  */

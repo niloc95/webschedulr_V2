@@ -113,7 +113,7 @@ function getFlashMessage($type) {
         </div>
     </div>
 
-    <!-- Clients Table with Search -->
+    <!-- Clients Table with Search - KEEP THIS SECTION -->
     <div class="card shadow mb-4">
         <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
             <h6 class="m-0 font-weight-bold text-primary">Manage Clients</h6>

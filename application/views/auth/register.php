@@ -17,7 +17,7 @@ $title = 'Register';
         <div class="auth-card card">
             <div class="card-header">
                 <div class="text-center mb-3">
-                    <img src="/assets/images/logo-placeholder.png" alt="WebSchedulr" height="40" class="app-logo">
+                <img src="/assets/images/logo_black.png" alt="WebSchedulr" class="app-logo">
                 </div>
                 <h3 class="auth-title">Create an Account</h3>
                 <p class="auth-subtitle">Register to start scheduling appointments</p>

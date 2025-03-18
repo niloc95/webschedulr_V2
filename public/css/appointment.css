@@ -1,0 +1,118 @@
+/* Calendar specific styles */
+.appointment {
+    padding: 10px;
+    margin: 5px 0;
+    border-radius: 5px;
+    transition: all 0.2s ease;
+    position: relative;
+}
+
+.appointment:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.appointment-time {
+    font-size: 0.9rem;
+    font-weight: 500;
+}
+
+.appointment-details {
+    margin: 5px 0;
+}
+
+.appointment-actions {
+    margin-top: 5px;
+}
+
+/* Position the dropdown menu properly */
+.appointment .dropdown-menu {
+    position: absolute;
+    z-index: 1050; /* Higher z-index to ensure it appears above other elements */
+}
+
+/* Make sure the dropdown toggle button has enough space */
+.appointment .dropdown-toggle {
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    overflow: hidden;
+}
+
+/* Time slot styling */
+.time-slot {
+    border-bottom: 1px solid #eee;
+    padding: 10px;
+    min-height: 60px;
+    position: relative; /* Ensure proper stacking context */
+    height: auto;  /* Allow height to expand */
+    padding-bottom: 15px; /* Extra padding to prevent content from being cut off */
+}
+
+.time-slot:hover {
+    background-color: rgba(0, 0, 0, 0.02);
+}
+
+/* Day grid styling */
+.day-schedule {
+    display: grid;
+    grid-template-columns: 80px 1fr;
+}
+
+.time-labels {
+    border-right: 1px solid #eee;
+}
+
+.time-label {
+    height: 60px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.8rem;
+    color: #666;
+    border-bottom: 1px solid #eee;
+}
+
+/* Tooltip styling */
+.tooltip-inner {
+    max-width: 300px;
+    padding: 10px;
+    text-align: left;
+}
+
+/* Ensure modal dialogs appear above everything */
+.modal {
+    z-index: 1060;
+}
+
+/* Appointment slots container */
+.appointment-slots {
+    display: flex;
+    flex-direction: column;
+}
+
+/* Ensure the container has proper clearing */
+.card-body {
+    overflow: hidden; /* Prevent margin collapse */
+}
+
+/* Make sure the page container properly extends */
+.container-fluid {
+    min-height: calc(100vh - 200px); /* Adjust based on your header/footer heights */
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .day-schedule {
+        grid-template-columns: 60px 1fr;
+    }
+
+    .appointment-actions .dropdown {
+        position: static;
+    }
+
+    .appointment-actions .dropdown-menu {
+        width: 90%;
+        left: 5%;
+        right: 5%;
+    }
+}
