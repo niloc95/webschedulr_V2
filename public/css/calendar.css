@@ -1,0 +1,413 @@
+/* ==============================================
+   CALENDAR - MAIN STYLES
+============================================== */
+
+/* Base calendar container */
+.calendar-container * {
+    box-sizing: border-box;
+}
+
+/* ==============================================
+   CALENDAR - MONTH VIEW
+============================================== */
+
+.calendar-wrapper {
+    background: #fff;
+    border-radius: 8px;
+    box-shadow: 0 0 15px rgba(0, 0, 0, 0.05);
+    margin-bottom: 2rem;
+}
+
+.calendar-header {
+    padding: 1.5rem;
+    border-bottom: 1px solid #e3e6f0;
+}
+
+.calendar-nav {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 1rem;
+}
+
+.calendar-nav h2 {
+    margin: 0;
+    font-size: 1.25rem;
+    font-weight: 600;
+}
+
+.calendar-weekdays {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    background-color: #f8f9fc;
+    border-bottom: 1px solid #e3e6f0;
+    text-align: center;
+}
+
+.calendar-weekdays > div {
+    padding: 0.75rem;
+    font-weight: 600;
+    color: #4e73df;
+}
+
+.calendar-days {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    grid-auto-rows: minmax(120px, 1fr);
+    border-top: 1px solid #e3e6f0;
+}
+
+.calendar-day {
+    border-right: 1px solid #e3e6f0;
+    border-bottom: 1px solid #e3e6f0;
+    padding: 0.5rem;
+    min-height: 120px;
+    position: relative;
+}
+
+.calendar-day:nth-child(7n) {
+    border-right: none;
+}
+
+.calendar-day.inactive {
+    background-color: #f8f9fc;
+    color: #b7b9cc;
+}
+
+.calendar-day.today {
+    background-color: #eef1ff;
+}
+
+.day-number {
+    font-weight: 600;
+    font-size: 14px;
+    margin-bottom: 0.5rem;
+}
+
+.day-events {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.day-link {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 1;
+}
+
+/* Monthly calendar view styles */
+.calendar-table {
+    table-layout: fixed;
+    height: 800px;
+}
+
+.calendar-day {
+    height: 120px;
+    position: relative;
+    vertical-align: top;
+    transition: background 0.2s;
+    padding: 0;
+}
+
+.calendar-day:hover {
+    background-color: #f8f9fa;
+}
+
+.calendar-day.empty {
+    background-color: #f6f6f6;
+}
+
+.calendar-day.today {
+    background-color: #e8f4ff;
+}
+
+.calendar-day-number {
+    padding: 5px 8px;
+    font-weight: bold;
+    display: inline-block;
+}
+
+.calendar-day-number a {
+    color: inherit;
+    text-decoration: none;
+}
+
+.calendar-day.today .calendar-day-number {
+    background-color: #007bff;
+    color: white;
+    border-radius: 50%;
+    width: 30px;
+    height: 30px;
+    text-align: center;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin: 5px;
+}
+
+.appointment-list {
+    max-height: 80%;
+    overflow-y: auto;
+    padding: 0 4px;
+}
+
+.appointment-item {
+    font-size: 0.8rem;
+    padding: 2px 4px;
+    margin-bottom: 2px;
+    background-color: white;
+    border-radius: 3px;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+
+.appointment-item a {
+    color: #333;
+    text-decoration: none;
+    display: block;
+}
+
+.appointment-time {
+    font-weight: bold;
+    font-size: 0.75rem;
+}
+
+/* ==============================================
+   CALENDAR - DAY VIEW
+============================================== */
+
+.day-view-wrapper {
+    padding: 1.5rem;
+    background: #fff;
+    border-radius: 8px;
+    box-shadow: 0 0 15px rgba(0, 0, 0, 0.05);
+}
+
+.day-header {
+    margin-bottom: 1.5rem;
+}
+
+.day-nav {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.day-schedule {
+    position: relative;
+    margin-top: 2rem;
+    height: 600px;
+    border-left: 1px solid #e3e6f0;
+}
+
+/* Timeline */
+.schedule-timeline {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 80px;
+    height: 100%;
+}
+
+.timeline-hour {
+    position: relative;
+    height: 60px;
+}
+
+.hour-label {
+    position: absolute;
+    top: -10px;
+    left: -70px;
+    font-size: 12px;
+    color: #6c757d;
+}
+
+.hour-line {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    border-top: 1px solid #e3e6f0;
+}
+
+/* ==============================================
+   CALENDAR - EVENTS & APPOINTMENTS
+============================================== */
+
+/* Events (Month View) */
+.event {
+    padding: 4px 6px;
+    border-radius: 4px;
+    font-size: 12px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.event-time {
+    font-weight: 600;
+    font-size: 11px;
+}
+
+.event-title {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Appointments (Day View) */
+.schedule-appointments {
+    position: relative;
+    margin-left: 80px;
+    height: 100%;
+    border-right: 1px solid #e3e6f0;
+}
+
+.appointment {
+    position: absolute;
+    left: 5px;
+    right: 5px;
+    padding: 8px;
+    border-radius: 4px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    overflow: hidden;
+    z-index: 5;
+}
+
+.appointment-time {
+    font-weight: 600;
+    font-size: 12px;
+    margin-bottom: 4px;
+}
+
+.appointment-client {
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.appointment-service {
+    font-size: 12px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.appointment-actions {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+}
+
+.appointment:hover .appointment-actions {
+    opacity: 1;
+}
+
+/* ==============================================
+   CALENDAR - FORMS & EMPTY STATES
+============================================== */
+
+/* Create appointment form */
+.create-appointment-wrapper {
+    padding: 1.5rem;
+    background: #fff;
+    border-radius: 8px;
+    box-shadow: 0 0 15px rgba(0, 0, 0, 0.05);
+}
+
+.appointment-form {
+    margin-top: 1.5rem;
+}
+
+/* Empty state */
+.empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 3rem 1rem;
+    text-align: center;
+}
+
+.empty-state-icon {
+    font-size: 3rem;
+    color: #d1d3e2;
+    margin-bottom: 1rem;
+}
+
+/* ==============================================
+   CALENDAR - STATUS COLORS
+============================================== */
+
+/* Event status colors */
+.event-success {
+    background-color: rgba(40, 167, 69, 0.15);
+    border-left: 3px solid #28a745;
+}
+
+.event-warning {
+    background-color: rgba(255, 193, 7, 0.15);
+    border-left: 3px solid #ffc107;
+}
+
+.event-danger {
+    background-color: rgba(220, 53, 69, 0.15);
+    border-left: 3px solid #dc3545;
+}
+
+.event-secondary {
+    background-color: rgba(108, 117, 125, 0.15);
+    border-left: 3px solid #6c757d;
+}
+
+/* Appointment status colors */
+.appointment-success {
+    background-color: rgba(40, 167, 69, 0.1);
+    border-left: 4px solid #28a745;
+}
+
+.appointment-warning {
+    background-color: rgba(255, 193, 7, 0.1);
+    border-left: 4px solid #ffc107;
+}
+
+.appointment-danger {
+    background-color: rgba(220, 53, 69, 0.1);
+    border-left: 4px solid #dc3545;
+}
+
+.appointment-secondary {
+    background-color: rgba(108, 117, 125, 0.1);
+    border-left: 4px solid #6c757d;
+}
+
+/* ==============================================
+   CALENDAR - RESPONSIVE STYLES
+============================================== */
+
+@media (max-width: 768px) {
+    .calendar-day {
+        min-height: 80px;
+    }
+    
+    .event {
+        padding: 2px 4px;
+        font-size: 10px;
+    }
+    
+    .day-view-wrapper {
+        padding: 0.5rem;
+    }
+    
+    .appointment-block {
+        padding: 10px;
+    }
+}

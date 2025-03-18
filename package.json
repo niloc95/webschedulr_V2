@@ -27,7 +27,9 @@
     "@fortawesome/fontawesome-free": "^6.5.2",
     "@fullcalendar/moment": "^6.1.11",
     "@popperjs/core": "^2.11.8",
+    "axios": "^1.8.3",
     "bootstrap": "^5.3.3",
+    "chart.js": "^4.4.8",
     "cookieconsent": "^3.1.1",
     "flatpickr": "^4.6.13",
     "fullcalendar": "^6.1.11",
@@ -56,12 +58,21 @@
     "gulp-rename": "^2.0.0",
     "gulp-sass": "^5.1.0",
     "prettier": "^3.0.0",
-    "sass": "^1.57.1",
+    "sass": "^1.85.1",
+    "vite": "^6.2.1",
     "zip-dir": "^2.0.0"
   },
   "scripts": {
     "start": "npx --yes gulp",
-    "build": "npx gulp build",
-    "docs": "npx gulp docs"
+    "build": "vite build",
+    "docs": "npx gulp docs",
+    "dev": "vite",
+    "preview": "vite preview"
+  },
+  "version": "1.0.0",
+  "main": "gulpfile.js",
+  "directories": {
+    "doc": "docs",
+    "test": "tests"
   }
 }

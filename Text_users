@@ -14,3 +14,26 @@ nilo@webscheduler.co.za
 mark.jones@frontend.co.za
 jarred.fuller@frontend.co.za
 hosting@frontend.co.za
+
+
+After confirming your setup is working:
+
+Update your .env file with actual configuration values:
+
+Set the correct BASE_URL
+Configure database settings
+Add PayFast credentials (if you have them)
+Start implementing the UI components:
+
+Dashboard layout
+Calendar component
+Appointment forms
+Integrate PayFast payment processing:
+
+Create appointment payment flow
+Implement notification handlers
+Would you like me to provide more details on any specific part of the implementation? For instance, I can explain how to:
+
+Integrate this setup with your existing codebase
+Create a specific UI component
+Set up the payment flow with PayFast
